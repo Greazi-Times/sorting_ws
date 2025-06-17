@@ -1,0 +1,167 @@
+button {
+    background-image: none;
+    /*border-radius: 0;
+    border: 0;*/
+    font-weight: bold;
+    color: black;
+}
+
+.start-button {
+    background-color: #00c853; /* Green */
+}
+
+.reset-button {
+    background-color: #FFA500; /* Green */
+}
+
+.stop-button {
+    background-color: #f44336; /* Green */
+}
+
+.estop-button {
+    background-color: #ff0000; /* Green */
+}
+
+.estop-button:hover {
+    background-color: #ffe600; /* Green */
+}
+
+.frame {
+    background-image: none;
+    background-color:rgb(179, 179, 179);
+    padding: 15px;
+    border-radius: 20px;
+    /*box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);*/
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.frame-title {
+    border-style: solid;
+    border-width: 0px 0px 3px 0px;
+    border-color: #d8d8d8;
+    color: white;
+}
+
+/* --- Animation Keyframes --- */
+@keyframes pulse-green {
+  0% { background-color: #4CAF50; }
+  50% { background-color: #81C784; }
+  100% { background-color: #4CAF50; }
+}
+  
+@keyframes pulse-red {
+  0% { background-color: #f44336; }
+  50% { background-color: #e57373; }
+  100% { background-color: #f44336; }
+}
+
+@keyframes pulse-blue {
+  0% { background-color: #2196F3; }
+  50% { background-color: #64B5F6; }
+  100% { background-color: #2196F3; }
+}
+  
+@keyframes pulse-yellow-red {
+    0% {
+      background-color: #ffd600;   /* Yellow */
+      border: 3px solid #ff0000;   /* Red border */
+      color: black;
+     }
+    79.999% {
+      background-color: #ffd600;
+      border: 3px solid #ff0000;
+      color: black;
+    }
+    80% {
+      background-color: #ff0000;   /* Red */
+      border: 3px solid #ffd600;   /* Yellow border */
+      color: white;
+    }
+    100% {
+      background-color: #ff0000;
+      border: 3px solid #ffd600;
+      color: white;
+    }
+}
+  
+  
+/* --- Animated Classes --- */
+.pulse-green {
+  animation: pulse-green 1s infinite;
+}
+  
+.pulse-red {
+  animation: pulse-red 1s infinite;
+}
+
+.pulse-blue {
+  animation: pulse-blue 1s infinite;
+}
+  
+.pulse-yellow-red {
+  animation: pulse-yellow-red 1s infinite;
+}
+
+/* --- Display LED --- */
+.indicator {
+  border-radius: 100%;
+  background-image: none;
+  border: 2px solid darkslategray;
+}
+
+.indicator-red {
+  background-color: rgba(255,0,0,0.25);
+}
+
+.indicator-orange {
+  background-color: rgba(155, 88, 0, 0.25);
+}
+
+.indicator-green {
+  background-color: rgba(60, 133, 60, 0.25);
+}
+
+.indicator-red-on {
+  background-color: red;
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+}
+
+.indicator-orange-on {
+  background-color: orange;
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+}
+
+.indicator-green-on {
+  background-color: rgb(40, 172, 0);
+  box-shadow: 0 0 10px rgba(0, 255, 0, 1);
+}
+
+@keyframes pulse-green {
+  0% { background-color: #4CAF50; box-shadow: 0 0 10px rgba(76, 175, 80, 0.5); }
+  50% { background-color: #81C784; box-shadow: 0 0  10px rgba(76, 175, 80, 0.7); }
+  100% { background-color: #4CAF50; box-shadow: 0 0 10px rgba(76, 175, 80, 0.5); }
+}
+
+@keyframes pulse-orange {
+  0% { background-color: #ff9800; box-shadow: 0 0 10px rgba(255, 152, 0, 0.5); }
+  50% { background-color: #ffb74d; box-shadow: 0 0 10px rgba(255, 152, 0, 0.7); }
+  100% { background-color: #ff9800; box-shadow: 0 0 10px rgba(255, 152, 0, 0.5); }
+}
+
+@keyframes pulse-red {
+  0% { background-color: #f44336; box-shadow: 0 0 10px rgba(244, 67, 54, 0.5); }
+  50% { background-color: #e57373; box-shadow: 0 0 10px rgba(244, 67, 54, 0.7); }
+  100% { background-color: #f44336; box-shadow: 0 0 10px rgba(244, 67, 54, 0.5); }
+}
+
+.indicator-red-blink {
+  animation: pulse-red 1s infinite;
+}
+
+.indicator-orange-blink {
+  animation: pulse-orange 1s infinite;
+}
+
+.indicator-green-blink {
+  animation: pulse-green 1s infinite;
+}
