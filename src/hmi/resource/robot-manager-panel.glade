@@ -213,6 +213,9 @@
                           <object class="GtkSwitch" id="mode_switch">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
+                            <style>
+                              <class name="switch"/>
+                            </style>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -370,6 +373,9 @@
                         <property name="top_attach">3</property>
                       </packing>
                     </child>
+                    <style>
+                      <class name="frame-box"/>
+                    </style>
                   </object>
                   <packing>
                     <property name="x">366</property>
@@ -546,7 +552,7 @@ Robbe van Eekelen</property>
                         <property name="label" translatable="yes">This system uses a uFactory Lite6 robotic arm, AI camera, 
 and ROS to detect, classify, and sort toothbrushes 
 automatically. The AI camera identifies each toothbrush, 
-and therobot picks and places it into the correct bin based 
+then the robot picks and places it into the correct bin based 
 on its type. Fast, reliable, and fully automated.</property>
                       </object>
                       <packing>

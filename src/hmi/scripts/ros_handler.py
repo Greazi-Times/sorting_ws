@@ -11,31 +11,20 @@ class ROSHandler:
         self.command_pub = rospy.Publisher('hmi/user_command', ControlCommand, queue_size=10)
         rospy.loginfo("[ROSHandler] ROS handler initialized and publisher ready.")
 
+        self.listener_callback = None  # Will hold user-defined callback
+        self.command_sub = rospy.Subscriber('hmi/system_command', ControlCommand, self._internal_callback)
+
     def publish_control_command(self, command_str):
         msg = ControlCommand()
         msg.command = command_str
         rospy.loginfo(f"[ROSHandler] Publishing command: {msg.command}")
         self.command_pub.publish(msg)
 
-    def system_status_callback(self, msg):
-        status = msg.data
-        print(f"[ROS] System status update: {status}")
+    def _internal_callback(self, msg):
+        rospy.loginfo(f"[ROSHandler] Received command: {msg.command}")
+        if self.listener_callback:
+            self.listener_callback(msg)
 
-        if status == "ERROR":
-            self.red_indicator.blink()
-            self.green_indicator.off()
-            self.orange_indicator.off()
-        elif status == "IDLE":
-            self.green_indicator.on()
-            self.red_indicator.off()
-            self.orange_indicator.off()
-        elif status == "RUNNING":
-            self.orange_indicator.on()
-            self.green_indicator.off()
-            self.red_indicator.off()
-        else:
-           print(prefix + "[WARN] Unknown system status received:", status)
-
-
-    def setup_ros_subscribers(self):
-        rospy.Subscriber("hmi/system_status", std, self.system_status_callback)
+    def add_listener(self, callback):
+        rospy.loginfo("[ROSHandler] Listener callback registered.")
+        self.listener_callback = callback

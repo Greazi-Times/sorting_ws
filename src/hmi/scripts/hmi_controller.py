@@ -42,8 +42,9 @@ class Handler:
 
         # Disable the start button
         self.builder.get_object("start_button").set_sensitive(False)
-        # Ensure stop button remains enabled
         self.builder.get_object("stop_button").set_sensitive(True)
+        self.builder.get_object("mode_switch").set_sensitive(False)
+        self.builder.get_object("reset_button").set_sensitive(False)
 
         self.green_indicator.off()
         self.orange_indicator.on()
@@ -62,6 +63,8 @@ class Handler:
         self.builder.get_object("stop_button").set_sensitive(False)
         # Enable start button in case user wants to start again after stop
         self.builder.get_object("start_button").set_sensitive(True)
+        self.builder.get_object("mode_switch").set_sensitive(True)
+        self.builder.get_object("reset_button").set_sensitive(True)
 
         self.green_indicator.off()
         self.orange_indicator.blink()
@@ -77,6 +80,8 @@ class Handler:
         # Disable other buttons
         self.builder.get_object("start_button").set_sensitive(False)
         self.builder.get_object("stop_button").set_sensitive(False)
+        self.builder.get_object("mode_switch").set_sensitive(False)
+        self.builder.get_object("reset_button").set_sensitive(True)
 
         self.all_indicators.off()
         self.red_indicator.on()
@@ -94,6 +99,8 @@ class Handler:
 
         self.builder.get_object("start_button").set_sensitive(True)
         self.builder.get_object("stop_button").set_sensitive(False)
+        self.builder.get_object("mode_switch").set_sensitive(True)
+        self.builder.get_object("reset_button").set_sensitive(False)
 
         self.estop_button_indication.off()
         self.reset_button_indication.off()
@@ -125,6 +132,7 @@ class Main:
         handler = Handler()
         handler.builder = self.builder
         handler.ros_handler = ros_handler.ROSHandler()
+        self.handler = handler
 
         handler.green_indicator = css_handler.GreenIndicator(self.builder)
         handler.orange_indicator = css_handler.OrangeIndicator(self.builder)
@@ -142,7 +150,6 @@ class Main:
         switch = self.builder.get_object("mode_switch")
         switch.connect("notify::active", handler.mode_switch)
 
-
         self.css_provider = Gtk.CssProvider()
         css_path = os.path.join(pkg_path, 'resource', 'style.css')
         self.css_provider.load_from_path(css_path)
@@ -153,9 +160,28 @@ class Main:
             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )
 
+        self.builder.get_object("start_button").set_sensitive(False)
+        self.builder.get_object("stop_button").set_sensitive(False)
+        self.builder.get_object("mode_switch").set_sensitive(False)
+        handler.reset_button_indication.on()
+
         self.window = self.builder.get_object("sorting-manager")
         self.window.connect("delete-event", self.on_window_close)
         self.window.show_all()
+
+        handler.ros_handler.add_listener(self.on_ros_message)
+
+    def on_ros_message(self, msg):
+        # Example response to received message
+        print(prefix + f"[Callback] Received message from ROS topic: {msg.command}")
+
+        if msg.command == "RESET":
+            # Optionally trigger UI reset or feedback
+            self.builder.get_object("start_button").set_sensitive(True)
+            self.builder.get_object("stop_button").set_sensitive(False)
+            self.handler.stop_button_indication.off()
+            self.handler.orange_indicator.off()
+            self.handler.green_indicator.on()
 
 
 

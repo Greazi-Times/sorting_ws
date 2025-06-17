@@ -174,3 +174,13 @@ button {
 .indicator-green-blink {
   animation: pulse-green 1s infinite;
 }
+
+.switch {
+  background-color: lightblue;
+  background-image: none;
+  border: 2px solid lightslategray;
+}
+
+.switch:checked {
+  background-color: blue;
+}
