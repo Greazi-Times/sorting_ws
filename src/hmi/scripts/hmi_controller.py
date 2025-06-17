@@ -13,6 +13,8 @@ from hmi.msg import ControlCommand  # Import the custom message
 import css_handler
 import ros_handler
 
+prefix = "[HMI] "
+
 # Create handler class to manage GUI interactions
 class Handler:
     # Initialize the handler with necessary attributes
@@ -23,6 +25,7 @@ class Handler:
         self.green_indicator = None
         self.orange_indicator = None
         self.red_indicator = None
+        self.cycle_indicator = None
         self.all_indicators = None
 
         self.start_button_indication = None
@@ -36,7 +39,6 @@ class Handler:
         if self.estop_active:
             print("Start blocked: E-STOP is active")
             return
-        print("Start button")
 
         # Disable the start button
         self.builder.get_object("start_button").set_sensitive(False)
@@ -55,7 +57,6 @@ class Handler:
         if self.estop_active:
             print("Stop blocked: E-STOP is active")
             return
-        print("Stop button")
 
         # Disable the stop button
         self.builder.get_object("stop_button").set_sensitive(False)
@@ -71,7 +72,6 @@ class Handler:
         self.ros_handler.publish_control_command("STOP")
 
     def estop_button(self, button):
-        print("E-STOP button")
         self.estop_active = True
 
         # Disable other buttons
@@ -90,7 +90,6 @@ class Handler:
 
 
     def reset_button(self, button):
-        print("Reset button")
         self.estop_active = False
 
         self.builder.get_object("start_button").set_sensitive(True)
@@ -107,13 +106,12 @@ class Handler:
         self.ros_handler.publish_control_command("RESET")
 
     def mode_switch(self, switch, param):
-        print("Mode switch toggled")
         if switch.get_active():
-            print("Switch ON")
+            self.ros_handler.publish_control_command("CONSTANT")
+            self.cycle_indicator.on()
         else:
-            print("Switch OFF")
-
-
+            self.ros_handler.publish_control_command("SINGLE")
+            self.cycle_indicator.off()
 
 class Main:
     def __init__(self):
@@ -131,6 +129,7 @@ class Main:
         handler.green_indicator = css_handler.GreenIndicator(self.builder)
         handler.orange_indicator = css_handler.OrangeIndicator(self.builder)
         handler.red_indicator = css_handler.RedIndicator(self.builder)
+        handler.cycle_indicator = css_handler.CycleIndicator(self.builder)
         handler.all_indicators = css_handler.AllIndicators(self.builder)
 
         handler.start_button_indication = css_handler.StartButton(self.builder)
@@ -161,24 +160,24 @@ class Main:
 
 
     def on_window_close(self, *args):
-        print("[INFO] Closing GUI and shutting down ROS...")
+        print(prefix + "[INFO] Closing GUI and shutting down ROS...")
         rospy.signal_shutdown("GUI closed by user")
         Gtk.main_quit()
 
         try:
             ppid = os.getppid()
-            print(f"[INFO] Killing parent roslaunch process (PID: {ppid})")
+            print(prefix + f"[INFO] Killing parent roslaunch process (PID: {ppid})")
             os.kill(ppid, signal.SIGINT)
         except Exception as e:
-            print(f"[WARN] Could not kill parent process: {e}")
+            print(prefix + f"[WARN] Could not kill parent process: {e}")
 
 if __name__ == '__main__':
-    print("[INFO] Starting Robot Manager Panel\n")
-    print("[INFO] Current working directory:", os.getcwd())
+    print(prefix + "[INFO] Starting Robot Manager Panel\n")
+    print(prefix + "[INFO] Current working directory:", os.getcwd())
 
     rospy.init_node('hmi_controller', anonymous=True)
 
     main = Main()
     Gtk.main()
 
-    print("[INFO] GTK main loop exited")
+    print(prefix + "[INFO] GTK main loop exited")

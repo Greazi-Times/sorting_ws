@@ -14,6 +14,7 @@ class HMICommandListener:
         self.light_cons_on = rospy.Publisher('light_indication/constant/on', std_msgs.msg.String, queue_size=10)
         self.light_blink_on = rospy.Publisher('light_indication/blink/on', std_msgs.msg.String, queue_size=10)
         self.light_off = rospy.Publisher('light_indication/off', std_msgs.msg.String, queue_size=10)
+        self.constant = False  # Default to single mode
 
     def command_callback(self, msg):
         rospy.loginfo(f"[HMI Listener] Received command: {msg.command}")
@@ -27,6 +28,10 @@ class HMICommandListener:
             self.reset_system()
         elif msg.command == "EMERGENCY_STOP":
             self.emergency_stop()
+        elif msg.command == "CONSTANT":
+            self.constant = True
+        elif msg.command == "SINGLE":
+            self.constant = False
         else:
             rospy.logwarn(f"[HMI Listener] Unknown command: {msg.command}")
 

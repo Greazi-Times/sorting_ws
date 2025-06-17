@@ -65,6 +65,13 @@ class RedIndicator(css_handler):
         self.remove_class("status_indicator_red", "indicator-red-on")
         self.remove_class("status_indicator_red", "indicator-red-blink")
 
+class CycleIndicator(css_handler):
+    def on(self):
+        self.add_class("status_indicator_cycle", "indicator-cycle-on")
+
+    def off(self):
+        self.remove_class("status_indicator_cycle", "indicator-cycle-on")
+
 class AllIndicators(css_handler):
     def off(self):
         self.remove_class("status_indicator_green", "indicator-green-on")

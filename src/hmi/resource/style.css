@@ -26,7 +26,7 @@ button {
     background-color: #ffe600; /* Green */
 }
 
-.frame {
+.frame-box {
     background-image: none;
     background-color:rgb(179, 179, 179);
     padding: 15px;
@@ -134,6 +134,15 @@ button {
 .indicator-green-on {
   background-color: rgb(40, 172, 0);
   box-shadow: 0 0 10px rgba(0, 255, 0, 1);
+}
+
+.indicator-cycle {
+  background-color: rgba(0, 68, 255, 0.25);
+}
+
+.indicator-cycle-on {
+  background-color: rgb(0, 68, 255);
+  box-shadow: 0 0 10px rgba(0, 68, 255, 1);
 }
 
 @keyframes pulse-green {

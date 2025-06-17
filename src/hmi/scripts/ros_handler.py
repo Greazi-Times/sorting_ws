@@ -4,6 +4,8 @@ import rospy
 from hmi.msg import ControlCommand
 from std_msgs.msg import String  # Add this at the top
 
+prefix = "[HMI ROS Handler] "
+
 class ROSHandler:
     def __init__(self):
         self.command_pub = rospy.Publisher('hmi/user_command', ControlCommand, queue_size=10)
@@ -32,7 +34,7 @@ class ROSHandler:
             self.green_indicator.off()
             self.red_indicator.off()
         else:
-           print("[WARN] Unknown system status received:", status)
+           print(prefix + "[WARN] Unknown system status received:", status)
 
 
     def setup_ros_subscribers(self):

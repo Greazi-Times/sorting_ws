@@ -195,7 +195,6 @@
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="valign">center</property>
-                            <property name="margin_bottom">10</property>
                             <property name="label" translatable="yes">Continues mode</property>
                             <attributes>
                               <attribute name="weight" value="bold"/>
@@ -229,7 +228,7 @@
                       </packing>
                     </child>
                     <style>
-                      <class name="frame"/>
+                      <class name="frame-box"/>
                     </style>
                   </object>
                   <packing>
@@ -338,6 +337,37 @@
                       <packing>
                         <property name="left_attach">0</property>
                         <property name="top_attach">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="status_indicator_cycle">
+                        <property name="width_request">35</property>
+                        <property name="height_request">35</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="halign">center</property>
+                        <property name="valign">center</property>
+                        <style>
+                          <class name="indicator"/>
+                          <class name="indicator-cycle"/>
+                        </style>
+                      </object>
+                      <packing>
+                        <property name="left_attach">0</property>
+                        <property name="top_attach">3</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="halign">start</property>
+                        <property name="valign">center</property>
+                        <property name="label" translatable="yes">Continuous cycle</property>
+                      </object>
+                      <packing>
+                        <property name="left_attach">1</property>
+                        <property name="top_attach">3</property>
                       </packing>
                     </child>
                   </object>
