@@ -5,17 +5,21 @@ from hmi.msg import ControlCommand
 import std_msgs
 
 class HMICommandListener:
-    def __init__(self):
-        rospy.init_node('hmi_command_listener', anonymous=True)
-        rospy.Subscriber('hmi/user_command', ControlCommand, self.command_callback)
-        rospy.loginfo("[HMI Listener] Node started. Waiting for HMI commands...")
+    #def __init__(self):
+    #    rospy.init_node('hmi_command_listener', anonymous=True)
+    #    rospy.Subscriber('hmi/user_command', ControlCommand, self.command_callback)
+    #    rospy.loginfo("[HMI Listener] Node started. Waiting for HMI commands...")
 
-        self.system_command_pub = rospy.Publisher('hmi/system_command', ControlCommand, queue_size=10)
+    #    self.system_command_pub = rospy.Publisher('hmi/system_command', ControlCommand, queue_size=10)
 
-        self.light_cons_on = rospy.Publisher('light_indication/constant/on', std_msgs.msg.String, queue_size=10)
-        self.light_blink_on = rospy.Publisher('light_indication/blink/on', std_msgs.msg.String, queue_size=10)
-        self.light_off = rospy.Publisher('light_indication/off', std_msgs.msg.String, queue_size=10)
-        self.constant = False  # Default to single mode
+    #    self.light_cons_on = rospy.Publisher('light_indication/constant/on', std_msgs.msg.String, queue_size=10)
+    #    self.light_blink_on = rospy.Publisher('light_indication/blink/on', std_msgs.msg.String, queue_size=10)
+    #    self.light_off = rospy.Publisher('light_indication/off', std_msgs.msg.String, queue_size=10)
+    #    self.constant = False  # Default to single mode
+
+    def __init__(self, rospy, rosHandler):
+        self.rospy = rospy
+        self.rosHandler = rosHandler
 
     def command_callback(self, msg):
         rospy.loginfo(f"[HMI Listener] Received command: {msg.command}")
@@ -39,17 +43,17 @@ class HMICommandListener:
     def light_indicator_cons(self, color):
         msg = std_msgs.msg.String()
         msg.data = color
-        self.light_cons_on.publish(msg)
+        self.rosHandler.publish('light_indication/constant/on', msg)
 
     def light_indicator_blink(self, color):
         msg = std_msgs.msg.String()
         msg.data = color
-        self.light_blink_on.publish(msg)
+        self.rosHandler.publish('light_indication/blink/on', msg)
 
     def light_indicator_off(self, color):
         msg = std_msgs.msg.String()
         msg.data = color
-        self.light_off.publish(msg)
+        self.rosHandler.publish('light_indication/off', msg)
 
     def start_sorting(self):
         rospy.loginfo("[Action] Starting sorting process...")
@@ -57,10 +61,10 @@ class HMICommandListener:
         self.light_indicator_cons("ORANGE")
         rospy.sleep(0.1)
         self.light_indicator_off("GREEN")
-        #rospy.sleep(0.1)
-        #self.light_indicator_cons("BUZZER")
-        #rospy.sleep(1)
-        #self.light_indicator_off("BUZZER")
+        rospy.sleep(0.1)
+        self.light_indicator_cons("BUZZER")
+        rospy.sleep(1)
+        self.light_indicator_off("BUZZER")
 
     def stop_system(self):
         rospy.loginfo("[Action] Stopping system...")
@@ -70,7 +74,7 @@ class HMICommandListener:
         self.light_indicator_blink("ORANGE")
         rospy.sleep(2)
         rospy.loginfo("[Action] Publishing RESET command to system...")
-        self.system_command_pub.publish(ControlCommand(command="RESET"))
+        self.rosHandler.publish('hmi/user_command', ControlCommand(command="RESET"))
         self.reset_system()
 
     def reset_system(self):
@@ -81,8 +85,8 @@ class HMICommandListener:
         self.light_indicator_off("RED")
         rospy.sleep(0.1)
         self.light_indicator_cons("GREEN")
-        #rospy.sleep(0.1)
-        #self.light_indicator_off("BUZZER")
+        rospy.sleep(0.1)
+        self.light_indicator_off("BUZZER")
 
     def emergency_stop(self):
         rospy.logerr("[Action] EMERGENCY STOP activated!")
@@ -92,12 +96,6 @@ class HMICommandListener:
         self.light_indicator_off("GREEN")
         rospy.sleep(0.1)
         self.light_indicator_cons("RED")
-        #rospy.sleep(0.1)
-        #self.light_indicator_blink("BUZZER")
+        rospy.sleep(0.1)
+        self.light_indicator_blink("BUZZER")
 
-if __name__ == '__main__':
-    try:
-        HMICommandListener()
-        rospy.spin()
-    except rospy.ROSInterruptException:
-        pass
