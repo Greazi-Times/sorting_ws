@@ -4,10 +4,7 @@
         <param name="port" value="/dev/ttyACM0"/>
         <param name="baud" value="57600"/>
     </node>
-
-    <!-- Toets-gebaseerde controle van transportband -->
-    <!-- <node pkg="transport_controller" type="toets_control_node.py" name="toets_control_node" output="screen"/> -->
-
+    
     <!-- Optioneel: Noodstop action server (moet bestand bestaan + uitvoerbaar zijn) -->
     <!--
     <node pkg="transport_controller" type="transport_estop_action_server.py" name="transport_estop_action_server" output="screen"/>
