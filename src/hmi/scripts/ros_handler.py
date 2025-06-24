@@ -2,7 +2,7 @@
 
 import rospy
 from hmi.msg import ControlCommand
-from std_msgs.msg import String  # Add this at the top
+from rosgraph_msgs.msg import Log  # ✅ Correct import for /rosout logging
 
 prefix = "[HMI ROS Handler] "
 
@@ -28,3 +28,8 @@ class ROSHandler:
     def add_listener(self, callback):
         rospy.loginfo("[ROSHandler] Listener callback registered.")
         self.listener_callback = callback
+
+
+class ROSLoggerListener:
+    def __init__(self, callback):
+        self.sub = rospy.Subscriber("/rosout", Log, callback)

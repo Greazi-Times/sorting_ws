@@ -8,10 +8,13 @@ import rospy
 import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk
+import sys
 
 from hmi.msg import ControlCommand  # Import the custom message
 import css_handler
 import ros_handler
+from console_handler import ConsoleHandler
+from ros_handler import ROSHandler, ROSLoggerListener
 
 prefix = "[HMI] "
 
@@ -121,6 +124,15 @@ class Handler:
             self.cycle_indicator.off()
 
 class Main:
+
+    def on_ros_log(self, msg):
+        level_map = {
+            1: "DEBUG", 2: "INFO", 4: "WARN", 8: "ERROR", 16: "FATAL"
+        }
+        level = level_map.get(msg.level, "INFO")
+        log_line = f"[{level}] [{msg.name}] {msg.msg}\n"
+        self.output_redirect.write(log_line)
+
     def __init__(self):
         rospack = rospkg.RosPack()
         pkg_path = rospack.get_path('hmi')
@@ -170,6 +182,22 @@ class Main:
         self.window.show_all()
 
         handler.ros_handler.add_listener(self.on_ros_message)
+
+        textview = self.builder.get_object("console_output")
+        output_redirect = ConsoleHandler(textview)
+
+        # Store it so we can call .write() from anywhere
+        self.output_redirect = output_redirect
+        self.ros_logger_listener = ros_handler.ROSLoggerListener(self.on_ros_log)
+
+        self.output_redirect.write("[DEBUG] Debug log example\n", "DEBUG")
+        self.output_redirect.write("[INFO] Info log example\n", "INFO")
+        self.output_redirect.write("[WARN] Warning log example\n", "WARN")
+        self.output_redirect.write("[ERROR] Error log example\n", "ERROR")
+        self.output_redirect.write("[FATAL] Fatal log example\n", "FATAL")
+
+
+
 
     def on_ros_message(self, msg):
         # Example response to received message
