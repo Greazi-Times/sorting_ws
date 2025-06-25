@@ -235,5 +235,5 @@ def main(args):
         print("Shutting down")
 
 
-if _name_ == '_main_':
+if __name__ == '__main__':
     main(sys.argv)
