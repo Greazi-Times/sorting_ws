@@ -37,8 +37,7 @@ class detection_displayer:
             object_class=self.latest_info["object_class"],
             confidence=self.latest_info["confidence"] 
         )
-
-    def _init_(self, config_file):
+    def __init__(self, config_file):
         rospy.loginfo(config_file)
         self.display_image = False
 
