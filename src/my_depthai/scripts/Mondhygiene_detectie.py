@@ -7,7 +7,7 @@
     License: CC BY-NC-SA
 '''
 
-from __future__ import print_function
+from _future_ import print_function
 from depthai_ros_msgs.srv import camera, cameraResponse
 from geometry_msgs.msg import PoseStamped, Quaternion
 import tf.transformations as tf_trans  
@@ -34,14 +34,15 @@ class detection_displayer:
             Y=self.latest_info["Y"],
             Z= self.latest_info["Z"],
             angle=self.latest_info["angle"],
-            object_class=self.latest_info["object_class"]
+            object_class=self.latest_info["object_class"],
+            confidence=self.latest_info["confidence"] 
         )
 
-    def __init__(self, config_file):
+    def _init_(self, config_file):
         rospy.loginfo(config_file)
         self.display_image = False
 
-        self.latest_info = {"X": 0.0, "Y": 0.0, "Z" : 538.2, "angle": 0.0, "object_class": ""}
+        self.latest_info = {"X": 0.0, "Y": 0.0, "Z" : 538.2, "angle": 0.0, "object_class": "", "confidence": 0}
         rospy.Service('/get_detection_info', camera, self.handle_get_info)
 
         self.colors = []
@@ -95,11 +96,18 @@ class detection_displayer:
                 Z = 538.2
 
                 class_index = detection.results[0].id
+                confidence = detection.results[0].score
+                confidence_pct = int(confidence * 100)
+
                 class_color = self.colors[int(class_index)].strip("#")
                 class_color = tuple(int(class_color[i:i + 2], 16) for i in (0, 2, 4))
 
                 cv2.rectangle(self.image, (int(x1), int(y1)), (int(x2), int(y2)), class_color, 2)
                 cv2.circle(self.image, (int(center_x), int(center_y)), 5, class_color, -1)
+
+                # Tekst met klasse + confidence
+                #label_text = f"{self.class_names[class_index]} ({confidence_pct}%)"
+                #cv2.putText(self.image, label_text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, class_color, 2)
 
                 h, w = self.image.shape[:2]
                 x1, y1 = max(0, x1), max(0, y1)
@@ -180,6 +188,7 @@ class detection_displayer:
                 self.latest_info["Z"] = Z
                 self.latest_info["angle"] = angle
                 self.latest_info["object_class"] = self.class_names[detection.results[0].id]
+                self.latest_info["confidence"] = confidence_pct               
 
                 #pose_msg = PoseStamped()
                 #pose_msg.header.stamp = rospy.Time.now()
@@ -226,5 +235,5 @@ def main(args):
         print("Shutting down")
 
 
-if __name__ == '__main__':
+if _name_ == '_main_':
     main(sys.argv)

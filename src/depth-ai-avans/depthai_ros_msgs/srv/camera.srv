@@ -1,9 +1,8 @@
 # camera.srv
 ---
----
 float32 X
 float32 Y
 float32 Z
 float32 angle
 string object_class
-
+float32 confidence

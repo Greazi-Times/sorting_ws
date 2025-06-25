@@ -58,8 +58,8 @@
     <arg name="yoloPyTorch"            default="true"/>
 
     <!-- Network trainded by pyTorch -->
-    <arg name="nnName"                 default="Tandenborstel_detectie.blob" if="$(eval arg('yoloPyTorch') == true)"      />
-    <arg name="nnConfig"               default="Tandenborstel_detectie.json" if="$(eval arg('yoloPyTorch') == true)"       />
+    <arg name="nnName"                 default="Mondhygiene_detectie.blob" if="$(eval arg('yoloPyTorch') == true)"      />
+    <arg name="nnConfig"               default="Mondhygiene_detectie.json" if="$(eval arg('yoloPyTorch') == true)"       />
 
   
     <arg name="resourceBaseFolder"     default="$(find my_depthai)/resources" />
