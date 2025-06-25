@@ -17,15 +17,12 @@ class Transportsystem:
         self.transport_actief = False
         self.object_klaar = False
         self.object_aangekomen = False
-        self.eindsensor_bezet = False
 
     def _beginsensor_callback(self, msg):
         self.object_klaar = msg.data
 
     def _eindsensor_callback(self, msg):
         self.eindsensor_bezet = msg.data
-        if self.transport_actief and msg.data:
-            self.object_aangekomen = True
 
     def start_transport(self):
         self.transport_actief = True
@@ -43,40 +40,44 @@ class Transportsystem:
             status_msg.data = "gestopt via noodstop" if via_noodstop else "gestopt normaal"
 
     def perform(self):
-        rospy.loginfo("Perform gestart: wachten op object aan beginsensor...")
-        self.object_klaar = False
-        self.object_aangekomen = False
-        rate = self.rospy.Rate(2)
+        rate = rospy.Rate(2)
 
-        while not self.rospy.is_shutdown():
-            if self.object_klaar and not self.eindsensor_bezet:
-                self.rospy.loginfo("Beginsensor actief en eindsensor vrij. Start transport.")
+        if self.eindsensor_bezet:
+            rospy.logerr("Eindsensor is al bezet bij start. Kan niet beginnen.")
+            return False
+        
+        # Check voor x aantal seconden of beginsensor actief is
+        start_time = rospy.get_time()
+        timeout = 5  # seconds
+
+        while not rospy.is_shutdown():
+            if self.object_klaar:
                 break
-            elif self.eindsensor_bezet:
-                self.rospy.logwarn("Eindsensor bezet, wacht tot deze vrij is...")
+            if rospy.get_time() - start_time > timeout:
+                rospy.logwarn("Geen object gedetecteerd bij beginsensor na 5 seconden.")
+                return False
             rate.sleep()
 
+        self.rospy.loginfo("Object gedetecteerd transportband start.")
         self.start_transport()
-        self.rospy.loginfo("Transportband draait. Wachten op eindsensor...")
 
         while not self.rospy.is_shutdown():
-            if self.object_aangekomen:
-                self.rospy.loginfo("Eindsensor geactiveerd. Stop transport.")
+            if self.eindsensor_bezet:
                 break
             rate.sleep()
 
+        rospy.loginfo("Object aangekomen bij eindsensor. Transport stopt.")
         self.stop_transport()
-        self.rospy.loginfo("Transport voltooid.")
         return True
 
     def foutiefObject(self):
-        self.rospy.loginfo("Afvoer foutobject gestart. Band draait tot eindsensor vrij is.")
+        rospy.loginfo("Afvoer foutobject gestart. Band draait tot eindsensor vrij is.")
         self.start_transport()
         rate = self.rospy.Rate(2)
 
         while not self.rospy.is_shutdown():
             if not self.eindsensor_bezet:
-                self.rospy.loginfo("Eindsensor vrij. Foutobject afgevoerd.")
+                rospy.loginfo("Eindsensor vrij. Foutobject afgevoerd.")
                 break
             rate.sleep()
 
