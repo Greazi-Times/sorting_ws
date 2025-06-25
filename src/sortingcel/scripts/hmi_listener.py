@@ -21,25 +21,6 @@ class HMICommandListener:
         self.rospy = rospy
         self.rosHandler = rosHandler
 
-    def command_callback(self, msg):
-        rospy.loginfo(f"[HMI Listener] Received command: {msg.command}")
-
-        # Example actions
-        if msg.command == "START":
-            self.start_sorting()
-        elif msg.command == "STOP":
-            self.stop_system()
-        elif msg.command == "RESET":
-            self.reset_system()
-        elif msg.command == "EMERGENCY_STOP":
-            self.emergency_stop()
-        elif msg.command == "CONSTANT":
-            self.constant = True
-        elif msg.command == "SINGLE":
-            self.constant = False
-        else:
-            rospy.logwarn(f"[HMI Listener] Unknown command: {msg.command}")
-
     def light_indicator_cons(self, color):
         msg = std_msgs.msg.String()
         msg.data = color
@@ -61,10 +42,10 @@ class HMICommandListener:
         self.light_indicator_cons("ORANGE")
         rospy.sleep(0.1)
         self.light_indicator_off("GREEN")
-        rospy.sleep(0.1)
-        self.light_indicator_cons("BUZZER")
-        rospy.sleep(1)
-        self.light_indicator_off("BUZZER")
+        #rospy.sleep(0.1)
+        #self.light_indicator_cons("BUZZER")
+        #rospy.sleep(1)
+        #self.light_indicator_off("BUZZER")
 
     def stop_system(self):
         rospy.loginfo("[Action] Stopping system...")
@@ -74,7 +55,7 @@ class HMICommandListener:
         self.light_indicator_blink("ORANGE")
         rospy.sleep(2)
         rospy.loginfo("[Action] Publishing RESET command to system...")
-        self.rosHandler.publish('hmi/user_command', ControlCommand(command="RESET"))
+        self.rosHandler.publish('hmi/system_command', ControlCommand(command="RESET"))
         self.reset_system()
 
     def reset_system(self):
@@ -85,8 +66,8 @@ class HMICommandListener:
         self.light_indicator_off("RED")
         rospy.sleep(0.1)
         self.light_indicator_cons("GREEN")
-        rospy.sleep(0.1)
-        self.light_indicator_off("BUZZER")
+        #rospy.sleep(0.1)
+        #self.light_indicator_off("BUZZER")
 
     def emergency_stop(self):
         rospy.logerr("[Action] EMERGENCY STOP activated!")
@@ -96,6 +77,6 @@ class HMICommandListener:
         self.light_indicator_off("GREEN")
         rospy.sleep(0.1)
         self.light_indicator_cons("RED")
-        rospy.sleep(0.1)
-        self.light_indicator_blink("BUZZER")
+        #rospy.sleep(0.1)
+        #self.light_indicator_blink("BUZZER")
 
