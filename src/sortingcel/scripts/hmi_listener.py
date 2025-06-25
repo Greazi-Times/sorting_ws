@@ -17,9 +17,9 @@ class HMICommandListener:
     #    self.light_off = rospy.Publisher('light_indication/off', std_msgs.msg.String, queue_size=10)
     #    self.constant = False  # Default to single mode
 
-    def __init__(self, rospy, rosHandler):
+    def __init__(self, rospy, ros_handler):
         self.rospy = rospy
-        self.rosHandler = rosHandler
+        self.rosHandler = ros_handler
 
     def light_indicator_cons(self, color):
         msg = std_msgs.msg.String()
@@ -36,7 +36,7 @@ class HMICommandListener:
         msg.data = color
         self.rosHandler.publish('light_indication/off', msg)
 
-    def start_sorting(self):
+    def in_progress(self):
         rospy.loginfo("[Action] Starting sorting process...")
         # TODO: Add actual logic here
         self.light_indicator_cons("ORANGE")
@@ -53,21 +53,17 @@ class HMICommandListener:
         self.light_indicator_off("ORANGE")
         rospy.sleep(0.1)
         self.light_indicator_blink("ORANGE")
-        rospy.sleep(2)
-        rospy.loginfo("[Action] Publishing RESET command to system...")
-        self.rosHandler.publish('hmi/system_command', ControlCommand(command="RESET"))
-        self.reset_system()
 
-    def reset_system(self):
-        rospy.loginfo("[Action] Resetting system...")
+    def reset_indication(self):
+        rospy.loginfo("[Action] Resetting indication...")
         # TODO: Add actual logic here
         self.light_indicator_off("ORANGE")
         rospy.sleep(0.1)
         self.light_indicator_off("RED")
         rospy.sleep(0.1)
         self.light_indicator_cons("GREEN")
-        #rospy.sleep(0.1)
-        #self.light_indicator_off("BUZZER")
+        rospy.sleep(0.1)
+        self.light_indicator_off("BUZZER")
 
     def emergency_stop(self):
         rospy.logerr("[Action] EMERGENCY STOP activated!")
@@ -79,4 +75,13 @@ class HMICommandListener:
         self.light_indicator_cons("RED")
         #rospy.sleep(0.1)
         #self.light_indicator_blink("BUZZER")
+
+    def error(self):
+        rospy.logerr("[Action] ERROR state activated!")
+
+        self.light_indicator_off("ORANGE")
+        rospy.sleep(0.1)
+        self.light_indicator_off("GREEN")
+        rospy.sleep(0.1)
+        self.light_indicator_blink("RED")
 

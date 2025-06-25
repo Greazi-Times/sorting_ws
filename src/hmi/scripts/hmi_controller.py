@@ -7,7 +7,7 @@ import rospkg
 import rospy
 import gi
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk, Gdk
+from gi.repository import Gtk, Gdk, GLib
 import sys
 
 from hmi.msg import ControlCommand  # Import the custom message
@@ -18,32 +18,23 @@ from ros_handler import ROSHandler, ROSLoggerListener
 
 prefix = "[HMI] "
 
-# Create handler class to manage GUI interactions
-class Handler:
-    # Initialize the handler with necessary attributes
-    def __init__(self):
-        self.builder = None
-        self.ros_handler = None
-        
-        self.green_indicator = None
-        self.orange_indicator = None
-        self.red_indicator = None
-        self.cycle_indicator = None
-        self.all_indicators = None
+class indication:
 
-        self.start_button_indication = None
-        self.stop_button_indication = None
-        self.estop_button_indication = None
-        self.reset_button_indication = None
+    def __init__(self, builder):
+        self.builder = builder
 
-        self.estop_active = False
+        self.green_indicator = css_handler.GreenIndicator(self.builder)
+        self.orange_indicator = css_handler.OrangeIndicator(self.builder)
+        self.red_indicator = css_handler.RedIndicator(self.builder)
+        self.cycle_indicator = css_handler.CycleIndicator(self.builder)
+        self.all_indicators = css_handler.AllIndicators(self.builder)
 
-    def start_button(self, button):
-        if self.estop_active:
-            print("Start blocked: E-STOP is active")
-            return
+        self.start_button_indication = css_handler.StartButton(self.builder)
+        self.stop_button_indication = css_handler.StopButton(self.builder)
+        self.estop_button_indication = css_handler.EStopButton(self.builder)
+        self.reset_button_indication = css_handler.ResetButton(self.builder)
 
-        # Disable the start button
+    def start(self):
         self.builder.get_object("start_button").set_sensitive(False)
         self.builder.get_object("stop_button").set_sensitive(True)
         self.builder.get_object("mode_switch").set_sensitive(False)
@@ -55,16 +46,8 @@ class Handler:
         self.stop_button_indication.off()
         self.start_button_indication.on()
 
-        self.ros_handler.publish_control_command("START")
-
-    def stop_button(self, button):
-        if self.estop_active:
-            print("Stop blocked: E-STOP is active")
-            return
-
-        # Disable the stop button
+    def stop(self):
         self.builder.get_object("stop_button").set_sensitive(False)
-        # Enable start button in case user wants to start again after stop
         self.builder.get_object("start_button").set_sensitive(True)
         self.builder.get_object("mode_switch").set_sensitive(True)
         self.builder.get_object("reset_button").set_sensitive(True)
@@ -75,31 +58,7 @@ class Handler:
         self.start_button_indication.off()
         self.stop_button_indication.on()
 
-        self.ros_handler.publish_control_command("STOP")
-
-    def estop_button(self, button):
-        self.estop_active = True
-
-        # Disable other buttons
-        self.builder.get_object("start_button").set_sensitive(False)
-        self.builder.get_object("stop_button").set_sensitive(False)
-        self.builder.get_object("mode_switch").set_sensitive(False)
-        self.builder.get_object("reset_button").set_sensitive(True)
-
-        self.all_indicators.off()
-        self.red_indicator.on()
-
-        self.start_button_indication.off()
-        self.stop_button_indication.off()
-        self.estop_button_indication.on()
-        self.reset_button_indication.on()
-
-        self.ros_handler.publish_control_command("EMERGENCY_STOP")
-
-
-    def reset_button(self, button):
-        self.estop_active = False
-
+    def reset(self):
         self.builder.get_object("start_button").set_sensitive(True)
         self.builder.get_object("stop_button").set_sensitive(False)
         self.builder.get_object("mode_switch").set_sensitive(True)
@@ -113,15 +72,73 @@ class Handler:
         self.all_indicators.off()
         self.green_indicator.on()
 
+    def estop(self):
+        self.builder.get_object("start_button").set_sensitive(False)
+        self.builder.get_object("stop_button").set_sensitive(False)
+        self.builder.get_object("mode_switch").set_sensitive(False)
+        self.builder.get_object("reset_button").set_sensitive(True)
+
+        self.all_indicators.off()
+        self.red_indicator.on()
+
+        self.start_button_indication.off()
+        self.stop_button_indication.off()
+        self.estop_button_indication.on()
+        self.reset_button_indication.on()
+
+    def error(self):
+        self.builder.get_object("start_button").set_sensitive(False)
+        self.builder.get_object("stop_button").set_sensitive(False)
+        self.builder.get_object("mode_switch").set_sensitive(False)
+        self.builder.get_object("reset_button").set_sensitive(True)
+
+        self.all_indicators.off()
+        self.red_indicator.blink()
+
+        self.start_button_indication.off()
+        self.stop_button_indication.off()
+        self.reset_button_indication.on()
+
+    def cycle(self, on):
+        if on:
+            self.cycle_indicator.on()
+        else:
+            self.cycle_indicator.off()
+
+
+class Handler:
+    def __init__(self):
+        self.builder = None
+        self.ros_handler = None
+        self.indication = None
+        self.estop_active = False
+
+    def start_button(self, button):
+        if self.estop_active:
+            print("Start blocked: E-STOP is active")
+            return
+        self.ros_handler.publish_control_command("START")
+
+    def stop_button(self, button):
+        if self.estop_active:
+            print("Stop blocked: E-STOP is active")
+            return
+        self.ros_handler.publish_control_command("STOP")
+
+    def estop_button(self, button):
+        self.estop_active = True
+        self.ros_handler.publish_control_command("EMERGENCY_STOP")
+
+    def reset_button(self, button):
+        self.estop_active = False
         self.ros_handler.publish_control_command("RESET")
 
     def mode_switch(self, switch, param):
         if switch.get_active():
             self.ros_handler.publish_control_command("CONSTANT")
-            self.cycle_indicator.on()
         else:
             self.ros_handler.publish_control_command("SINGLE")
-            self.cycle_indicator.off()
+
 
 class Main:
 
@@ -141,21 +158,13 @@ class Main:
         glade_path = os.path.join(pkg_path, 'resource', 'robot-manager-panel.glade')
         self.builder.add_from_file(glade_path)
 
+        self.indication = indication(self.builder)
+
         handler = Handler()
         handler.builder = self.builder
+        handler.indication = self.indication
         handler.ros_handler = ros_handler.ROSHandler()
         self.handler = handler
-
-        handler.green_indicator = css_handler.GreenIndicator(self.builder)
-        handler.orange_indicator = css_handler.OrangeIndicator(self.builder)
-        handler.red_indicator = css_handler.RedIndicator(self.builder)
-        handler.cycle_indicator = css_handler.CycleIndicator(self.builder)
-        handler.all_indicators = css_handler.AllIndicators(self.builder)
-
-        handler.start_button_indication = css_handler.StartButton(self.builder)
-        handler.stop_button_indication = css_handler.StopButton(self.builder)
-        handler.estop_button_indication = css_handler.EStopButton(self.builder)
-        handler.reset_button_indication = css_handler.ResetButton(self.builder)
 
         self.builder.connect_signals(handler)
 
@@ -172,58 +181,50 @@ class Main:
             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )
 
-        self.builder.get_object("start_button").set_sensitive(False)
-        self.builder.get_object("stop_button").set_sensitive(False)
-        self.builder.get_object("mode_switch").set_sensitive(False)
-        handler.reset_button_indication.on()
-
         self.window = self.builder.get_object("sorting-manager")
         self.window.connect("delete-event", self.on_window_close)
         self.window.show_all()
+
+        # Run initial error indication safely after show_all
+        GLib.idle_add(self.indication.error)
 
         handler.ros_handler.add_listener(self.on_ros_message)
 
         textview = self.builder.get_object("console_output")
         output_redirect = ConsoleHandler(textview)
 
-        # Store it so we can call .write() from anywhere
         self.output_redirect = output_redirect
         self.ros_logger_listener = ros_handler.ROSLoggerListener(self.on_ros_log)
 
-        self.output_redirect.write("[DEBUG] Debug log example\n", "DEBUG")
-        self.output_redirect.write("[INFO] Info log example\n", "INFO")
-        self.output_redirect.write("[WARN] Warning log example\n", "WARN")
-        self.output_redirect.write("[ERROR] Error log example\n", "ERROR")
-        self.output_redirect.write("[FATAL] Fatal log example\n", "FATAL")
-
-
-
-
     def on_ros_message(self, msg):
-        # Example response to received message
         print(prefix + f"[Callback] Received message from ROS topic: {msg.command}")
 
-        if msg.command == "RESET":
-            # Optionally trigger UI reset or feedback
-            self.builder.get_object("start_button").set_sensitive(True)
-            self.builder.get_object("stop_button").set_sensitive(False)
-            self.handler.stop_button_indication.off()
-            self.handler.orange_indicator.off()
-            self.handler.green_indicator.on()
-
-
+        if msg.command == "IN-PROGRESS":
+            GLib.idle_add(self.indication.start)
+        elif msg.command == "STOPPING":
+            GLib.idle_add(self.indication.stop)
+        elif msg.command == "EMERGENCY_STOP":
+            GLib.idle_add(self.indication.estop)
+        elif msg.command == "ERROR":
+            GLib.idle_add(self.indication.error)
+        elif msg.command == "RESET":
+            GLib.idle_add(self.indication.reset)
+        elif msg.command == "CONSTANT":
+            GLib.idle_add(self.indication.cycle, True)
+        elif msg.command == "SINGLE":
+            GLib.idle_add(self.indication.cycle, False)
 
     def on_window_close(self, *args):
         print(prefix + "[INFO] Closing GUI and shutting down ROS...")
         rospy.signal_shutdown("GUI closed by user")
         Gtk.main_quit()
-
         try:
             ppid = os.getppid()
             print(prefix + f"[INFO] Killing parent roslaunch process (PID: {ppid})")
             os.kill(ppid, signal.SIGINT)
         except Exception as e:
             print(prefix + f"[WARN] Could not kill parent process: {e}")
+
 
 if __name__ == '__main__':
     print(prefix + "[INFO] Starting Robot Manager Panel\n")

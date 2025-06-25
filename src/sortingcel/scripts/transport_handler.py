@@ -85,6 +85,5 @@ class Transportsystem:
         return True
 
     def noodstop(self):
-        self.rospy.logwarn("NOODSTOP lokaal geactiveerd!")
         self.stop_transport(via_noodstop=True)
         return True
