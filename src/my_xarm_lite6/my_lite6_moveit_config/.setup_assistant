@@ -1,0 +1,11 @@
+moveit_setup_assistant_config:
+  URDF:
+    package: my_lite6_description
+    relative_path: urdf/lite6_robot.urdf.xacro
+    xacro_args: --inorder
+  SRDF:
+    relative_path: config/lite6_robot.srdf
+  CONFIG:
+    author_name: Gerard Harkema
+    author_email: ga.harkema@avans.nl
+    generated_timestamp: 1700596033

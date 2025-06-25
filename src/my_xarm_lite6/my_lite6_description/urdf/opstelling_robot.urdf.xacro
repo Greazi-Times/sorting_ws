@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://wiki.ros.org/xacro">
+
+  <xacro:macro name="opstelling_robot_model" params="">
+
+    <link name="opstelling_robot_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://my_lite6_description/meshes/opstelling_robot.stl" scale="1 1 1"/>
+        </geometry>
+        <material name="gray">
+          <color rgba="0.6 0.6 0.6 1.0"/>
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://my_lite6_description/meshes/opstelling_robot.stl" scale="1 1 1"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="2.0"/>
+        <inertia ixx="1.01" ixy="1.0" ixz="1.0" iyy="1.01" iyz="1.0" izz="1.01"/>
+      </inertial>
+    </link>
+
+    <joint name="opstelling_robot_joint" type="fixed">
+      <parent link="world"/>
+      <child link="opstelling_robot_link"/>
+      <origin xyz="-0.3 -0.4 -0.03" rpy="1.5708 0 1.5708"/>
+    </joint>
+
+  </xacro:macro>
+
+</robot>
+

@@ -1,0 +1,21 @@
+<?xml version="1.0" ?>
+<launch>
+
+  <arg name="sim" default="false"/>
+  <arg name="robot_ip" default="192.168.1.155" />
+
+  <!-- startup ros_control for real robot -->
+  <group unless="$(arg sim)">
+    <include file="$(find my_lite6_moveit_config)/launch/realMove_exec.launch">
+      <arg name="robot_ip" value="$(arg robot_ip)" />
+    </include>
+  </group>
+
+  <!-- startup simulated (rviz)world and spawn robot-->
+  <group if="$(arg sim)">
+    <include file="$(find my_lite6_moveit_config)/launch/demo.launch"/>
+  </group>
+
+  <node pkg="tf2_ros" type="static_transform_publisher" name="test_broadcaster" args="0.0 0.15 0.15 0.0 0.0 0.0 1.0 world ik_testpoint" />
+
+</launch>

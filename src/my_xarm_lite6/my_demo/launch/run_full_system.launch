@@ -1,0 +1,41 @@
+<?xml version="1.0" ?>
+<launch>
+
+  <!-- Parameters -->
+  <arg name="sim" default="false"/>
+  <arg name="robot_ip" default="192.168.1.155" />
+
+  <!-- Start MoveIt + echte robot -->
+  <group unless="$(arg sim)">
+    <include file="$(find my_lite6_moveit_config)/launch/realMove_exec.launch">
+      <arg name="robot_ip" value="$(arg robot_ip)" />
+    </include>
+  </group>
+
+  <!-- Start simulatie + rviz -->
+  <group if="$(arg sim)">
+    <include file="$(find my_lite6_moveit_config)/launch/demo.launch"/>
+  </group>
+
+  <!-- Optioneel: vaste transform, afhankelijk van je TF-structuur -->
+  <node pkg="tf2_ros" type="static_transform_publisher"
+        name="test_broadcaster"
+        args="0.0 0.0 0.0 0.0 0.0 0.0 1.0 world camera_testpoint" />
+
+  <!-- Start robot_controller (ActionServer) -->
+  <node name="robot_controller"
+        pkg="my_demo"
+        type="robot_controller.py"
+        output="screen"
+        required="true" />
+
+  <!-- Optioneel: start client (stuurt doel automatisch) -->
+  <!--
+  <node name="send_goal"
+        pkg="my_demo"
+        type="send_goal.py"
+        output="screen" />
+  -->
+
+</launch>
+
