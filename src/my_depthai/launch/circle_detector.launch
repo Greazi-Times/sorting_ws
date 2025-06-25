@@ -1,0 +1,146 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- <args for urdf/> -->
+    <arg name="mxId"                 default=""/>
+    <arg name="usb2Mode"             default="false"/>
+    <arg name="poeMode"              default="false"/>
+
+    <arg name="camera_model"         default="OAK-D"            /> <!-- 'zed' or 'zedm' -->
+    <arg name="tf_prefix"            default="oak"              />
+    <arg name="mode"                 default="depth"            />
+    <arg name="base_frame"           default="oak-d_frame"      />
+    <arg name="parent_frame"         default="oak-d-base-frame" />
+    <arg name="imuMode"              default="1"                />   <!-- 0 -> COPY, 1 -> LINEAR_INTERPOLATE_GYRO, 2 -> LINEAR_INTERPOLATE_ACCEL -->
+
+    <arg name="cam_pos_x"             default="0.25" /> <!-- Position respect to base frame (i.e. "base_link) -->
+    <arg name="cam_pos_y"             default="0.0" /> <!-- Position respect to base frame (i.e. "base_link) -->
+    <arg name="cam_pos_z"             default="0.5" /> <!-- Position respect to base frame (i.e. "base_link) -->
+    <arg name="cam_roll"              default="0.0" /> <!-- Orientation respect to base frame (i.e. "base_link) -->
+    <arg name="cam_pitch"             default="0.0" /> <!-- Orientation respect to base frame (i.e. "base_link) -->
+    <arg name="cam_yaw"               default="0.0" /> <!-- Orientation respect to base frame (i.e. "base_link) -->
+
+    <arg name="lrcheck"               default="true" />
+    <arg name="extended"              default="false"/>
+    <arg name="subpixel"              default="true" />
+    <arg name="rectify"               default="true" />
+    <arg name="depth_aligned"         default="true" />
+    <arg name="manualExposure"        default="false"/>
+    <arg name="expTime"               default="20000"/>
+    <arg name="sensIso"               default="800" />
+
+    <arg name="stereo_fps"            default="15"  />
+    <arg name="confidence"            default="200" />
+    <arg name="LRchecktresh"          default="5"   />
+<!--
+    <arg name="monoResolution"        default="720p"/>
+-->
+    <arg name="monoResolution"        default="400p"/>
+
+    <arg name="rgbResolution"           default="1080p"/>
+    <arg name="rgbScaleNumerator"       default="2"/>
+    <arg name="rgbScaleDinominator"     default="3"/>
+    <arg name="previewWidth"            default="416"/>
+    <arg name="previewHeight"           default="416"/>
+
+    <arg name="angularVelCovariance"  default="0"   />
+    <arg name="linearAccelCovariance" default="0"   />
+
+    <arg name="enableDotProjector"    default="false"/>
+    <arg name="enableFloodLight"      default="false"/>
+    <arg name="dotProjectormA"        default="200.0"/>
+    <arg name="floodLightmA"          default="200.0"/>
+
+    <arg name="enableRviz"            default="true"/>
+
+    <arg name="enableNeuralNetworkDetection" default="false" />
+
+    <include file="$(find my_depthai)/launch/urdf_ex.launch">
+        <arg name="base_frame"      value="$(arg  base_frame)"  />
+        <arg name="parent_frame"    value="$(arg  parent_frame)"/>
+        <arg name="camera_model"    value="$(arg  camera_model)"/>
+        <arg name="tf_prefix"       value="$(arg  tf_prefix)" />
+        <arg name="cam_pos_x"       value="$(arg  cam_pos_x)"   />
+        <arg name="cam_pos_y"       value="$(arg  cam_pos_y)"   />
+        <arg name="cam_pos_z"       value="$(arg  cam_pos_z)"   />
+        <arg name="cam_roll"        value="$(arg  cam_roll)"    />
+        <arg name="cam_pitch"       value="$(arg  cam_pitch)"   />
+        <arg name="cam_yaw"         value="$(arg  cam_yaw)"     />
+    </include>
+
+    <node pkg="tf2_ros" type="static_transform_publisher" name="oak_broadcaster" args="0 0 0 0 0 0 1 world oak-d-base-frame" />
+
+    <!-- launch-prefix="xterm -e gdb (add [- - args] without space) -->
+    <node name="stereo_inertial_nn_publisher" pkg="my_depthai" type="stereo_inertial_nn_node" output="screen" required="true">
+        <param name="mxId"                  value="$(arg mxId)"/>
+        <param name="usb2Mode"              value="$(arg usb2Mode)"/>
+        <param name="poeMode"               value="$(arg poeMode)"/>
+
+        <param name="tf_prefix"             value="$(arg tf_prefix)"/>
+        <param name="mode"                  value="$(arg mode)"/>
+        <param name="imuMode"               value="$(arg imuMode)"/>
+
+        <param name="lrcheck"               value="$(arg lrcheck)"/>
+        <param name="extended"              value="$(arg extended)"/>
+        <param name="subpixel"              value="$(arg subpixel)"/>
+        <param name="rectify"               value="$(arg rectify)" />
+        <param name="manualExposure"        value="$(arg manualExposure)" />
+        <param name="expTime"               value="$(arg expTime)" />
+        <param name="sensIso"               value="$(arg sensIso)" />
+
+        <param name="stereo_fps"            value="$(arg stereo_fps)" />
+        <param name="confidence"            value="$(arg confidence)" />
+        <param name="LRchecktresh"          value="$(arg LRchecktresh)" />
+        <param name="monoResolution"        value="$(arg monoResolution)" />
+
+        <param name="rgbResolution"         value="$(arg rgbResolution)" />
+        <param name="rgbScaleNumerator"     value="$(arg rgbScaleNumerator)" />
+        <param name="rgbScaleDinominator"   value="$(arg rgbScaleDinominator)" />
+        <param name="previewWidth"          value="$(arg previewWidth)" />
+        <param name="previewHeight"         value="$(arg previewHeight)" />
+
+        <param name="angularVelCovariance"  value="$(arg angularVelCovariance)" />
+        <param name="linearAccelCovariance" value="$(arg linearAccelCovariance)" />
+
+        <param name="enableDotProjector"    value="$(arg enableDotProjector)" />
+        <param name="enableFloodLight"      value="$(arg enableFloodLight)" />
+        <param name="dotProjectormA"        value="$(arg dotProjectormA)" />
+        <param name="floodLightmA"          value="$(arg floodLightmA)" />
+
+        <param name="enableNeuralNetworkDetection"   value="$(arg enableNeuralNetworkDetection)" />
+
+    </node>
+
+    <node pkg="nodelet" type="nodelet" name="nodelet_manager"  args="manager" output="screen"/>
+
+    <node pkg="nodelet" type="nodelet" name="depth_image_convertion_nodelet"
+        args="load depth_image_proc/convert_metric nodelet_manager">
+        <remap from="image_raw" to="/stereo_inertial_nn_publisher/stereo/depth"/>
+        <remap from="image" to="/stereo_inertial_nn_publisher/stereo/image"/>
+    </node>
+
+    <node pkg="nodelet" type="nodelet" name="depth_image_to_rgb_pointcloud"
+        args="load depth_image_proc/point_cloud_xyzrgb nodelet_manager">
+        <param name="queue_size"          value="10"/>
+        <remap from="rgb/camera_info" to="/stereo_inertial_nn_publisher/color/camera_info"/>
+        <remap from="rgb/image_rect_color" to="/stereo_inertial_nn_publisher/color/image"/>
+        <remap from="depth_registered/image_rect" to="/stereo_inertial_nn_publisher/stereo/image"/>
+        <remap from="depth_registered/points" to="/stereo_inertial_nn_publisher/stereo/points"/>
+    </node>
+
+  <group if="$(eval arg('enableRviz') == true)">
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find my_depthai)/rviz/circle_detector.rviz" />
+  </group>
+
+
+  <node  type="circle_detector.py" name="circleDetecor" pkg="my_depthai" output="screen">
+      <remap from="image_in" to="/stereo_inertial_nn_publisher/color/image"/>
+      <remap from="image_out" to="/stereo_inertial_nn_publisher/color/circles"/>
+      <remap from="pcl_in" to="/stereo_inertial_nn_publisher/stereo/points"/>
+  </node>
+  <node  type="workspace_from_markers.py" name="workspace_from_markers" pkg="my_depthai" output="screen">
+      <remap from="image_in" to="/stereo_inertial_nn_publisher/color/image"/>
+      <remap from="image_markers_out" to="/stereo_inertial_nn_publisher/color/image_markers"/>
+      <remap from="image_workspace_out" to="/stereo_inertial_nn_publisher/color/image_workspace"/>
+  </node>
+
+</launch>
