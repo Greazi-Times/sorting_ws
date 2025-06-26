@@ -1,11 +1,12 @@
+# MoveToPose.action
+# ===================
 # Goal
 geometry_msgs/Pose target_pose
-
 ---
 # Result
 bool success
-
+string status
 ---
 # Feedback
 float32 progress
-
+string status

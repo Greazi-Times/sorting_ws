@@ -8,65 +8,100 @@ import actionlib
 from geometry_msgs.msg import Pose
 from my_demo.msg import MoveToPoseAction, MoveToPoseFeedback, MoveToPoseResult
 from moveit_msgs.msg import MoveGroupAction
+from xarm_msgs.msg import RobotMsg
 
 class MoveToPoseActionServer:
     def __init__(self):
-        # Start MoveIt en ROS node
         moveit_commander.roscpp_initialize([])
         rospy.init_node('robot_controller')
 
-        # Wacht tot de move_group server actief is (belangrijk voor planning)
         rospy.loginfo("Wachten tot move_group actief is...")
         move_group_client = actionlib.SimpleActionClient('move_group', MoveGroupAction)
         move_group_client.wait_for_server()
         rospy.loginfo("move_group server actief.")
 
-        # Aanmaken van eenMoveGroupCommander voor de 'arm' groep
         self.arm_group = moveit_commander.MoveGroupCommander("arm")
-        rospy.loginfo("Verbonden met planning group 'arm'")
 
-        # Start een Action Server voor doelen die via MoveToPoseAction gestuurd worden
         self.server = actionlib.SimpleActionServer(
-            'move_to_pose',               # Naam van de action server
-            MoveToPoseAction,             # Het actietype
-            execute_cb=self.execute_cb,   # Callback functie die uitgevoerd wordt bij een nieuw doel
-            auto_start=False              # Start pas handmatig
+            'move_to_pose',
+            MoveToPoseAction,
+            execute_cb=self.execute_callback,
+            auto_start=False
         )
         self.server.start()
-        rospy.loginfo("MoveToPoseAction server gestart")
+        rospy.loginfo("MoveToPose action server gestart.")
 
-    def execute_cb(self, goal):
-        # Ontvangen van een nieuw doel (positie + oriëntatie)
-        rospy.loginfo("Nieuw doel ontvangen")
+        self.estop_active = False
+        self._estop_logged = False
 
-        # Zet dit doel als het gewenste eindpunt voor de robotarm
+        rospy.Subscriber("/ufactory/robot_states", RobotMsg, self.robot_state_callback)
+        rospy.Timer(rospy.Duration(0.1), self.check_estop_timer)
+
+    def robot_state_callback(self, msg):
+        self.estop_active = (msg.err == 2)
+
+    def check_estop_timer(self, event):
+        if self.estop_active and not self._estop_logged:
+            rospy.logwarn("E-stop actief: robotbeweging wordt direct gestopt!")
+            self.arm_group.stop()
+            self._estop_logged = True
+        elif not self.estop_active:
+            self._estop_logged = False
+
+    def execute_callback(self, goal):
+        feedback = MoveToPoseFeedback()
+        result = MoveToPoseResult()
+
+        # --- Status: planning ---
+        feedback.status = "planning"
+        self.server.publish_feedback(feedback)
+        rospy.loginfo("Status: planning")
+
+        # Check E-stop vóór beweging
+        if self.estop_active:
+            rospy.logwarn("Beweging afgebroken: E-stop actief vóór uitvoering")
+            feedback.status = "cancelled"
+            self.server.publish_feedback(feedback)
+
+            result.success = False
+            result.status = "cancelled"
+            self.server.set_aborted(result)
+            return
+
+        # --- Set doelpositie ---
         self.arm_group.set_pose_target(goal.target_pose)
 
-        # Start planning en uitvoering van de beweging
+        # --- Status: moving ---
+        feedback.status = "moving"
+        self.server.publish_feedback(feedback)
+        rospy.loginfo("Status: moving")
+
         success = self.arm_group.go(wait=True)
 
-        # Stop eventuele restbeweging en wis het doel
+        # --- Stop + clear targets ---
         self.arm_group.stop()
         self.arm_group.clear_pose_targets()
 
-        # Stuur 100% voortgang terug als feedback
-        feedback = MoveToPoseFeedback()
-        feedback.progress = 100.0
-        self.server.publish_feedback(feedback)
-
-        # Stuur resultaat terug naar de client
-        result = MoveToPoseResult()
-        result.success = success
         if success:
-            rospy.loginfo("Beweging succesvol uitgevoerd.")
+            feedback.status = "op_positie"
+            self.server.publish_feedback(feedback)
+            rospy.loginfo("Status: op_positie")
+            rospy.sleep(0.2)
+
+            result.success = True
+            result.status = "op_positie"
             self.server.set_succeeded(result)
         else:
-            rospy.logwarn("Beweging mislukt.")
+            feedback.status = "error"
+            self.server.publish_feedback(feedback)
+            rospy.logwarn("Status: error")
+
+            result.success = False
+            result.status = "error"
             self.server.set_aborted(result)
 
 if __name__ == '__main__':
     try:
-        # Start de action server en blijf actief
         server = MoveToPoseActionServer()
         rospy.spin()
     except rospy.ROSInterruptException:

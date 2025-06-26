@@ -4,31 +4,38 @@
 import rospy
 import actionlib
 import tf2_ros
+from std_msgs.msg import Bool
 from geometry_msgs.msg import Pose, TransformStamped
 from tf.transformations import quaternion_from_euler
 from my_demo.msg import MoveToPoseAction, MoveToPoseGoal
-from xarm_msgs.srv import SetInt16, Call
+from xarm_msgs.srv import SetInt16, Call, SetInt16Request
+from xarm_msgs.msg import RobotMsg
 
 class RobotHandler:
     def __init__(self):
-        # Maak verbinding met de action server voor het sturen van poses
         self.client = actionlib.SimpleActionClient('move_to_pose', MoveToPoseAction)
         rospy.loginfo("Wachten op action server...")
         self.client.wait_for_server()
         rospy.loginfo("Verbonden met action server.")
 
-        # Initialiseer de gripper service
         rospy.loginfo("Wachten op gripper service...")
         rospy.wait_for_service('/ufactory/vacuum_gripper_set')
         self.gripper_service = rospy.ServiceProxy('/ufactory/vacuum_gripper_set', SetInt16)
         rospy.loginfo("Gripper service beschikbaar.")
 
-        # Initialiseer de TF broadcaster om frames te publiceren in RViz
         self.tf_broadcaster = tf2_ros.TransformBroadcaster()
         self.latest_pose = None
         self.tf_timer = rospy.Timer(rospy.Duration(0.1), self.publish_tf_timer)
 
-        # Definieer de standby positie voor de robotarm
+        self.emergency_stop_active = False
+        self.external_emergency_stop = False
+        self.has_error = False
+        self.has_warning = False
+        self._estop_logged = False
+
+        rospy.Subscriber("/ufactory/robot_states", RobotMsg, self._robot_state_callback)
+        rospy.Subscriber("/custom/emergency_stop", Bool, self.external_estop_callback)
+
         self.standby_pose = Pose()
         self.standby_pose.position.x = 0.0
         self.standby_pose.position.y = 0.075
@@ -39,8 +46,41 @@ class RobotHandler:
         self.standby_pose.orientation.z = qz
         self.standby_pose.orientation.w = qw
 
+    def _robot_state_callback(self, msg):
+        e_stop_now = (msg.err == 2)
+        if e_stop_now and not self.emergency_stop_active:
+            self.cancel_current_motion("Hardwarematige E-stop via robot_states")
+
+        self.emergency_stop_active = e_stop_now
+        self.has_error = (msg.err != 0)
+        self.has_warning = (msg.warn != 0)
+
+        if self.emergency_stop_active and not self._estop_logged:
+            rospy.logwarn("Noodstop geactiveerd (err=2)")
+            self._estop_logged = True
+        elif not self.emergency_stop_active:
+            self._estop_logged = False
+
+        if not self.emergency_stop_active:
+            if self.has_error:
+                rospy.logerr("Robotfout actief: err={}".format(msg.err))
+            elif self.has_warning:
+                rospy.logwarn("Waarschuwing actief: warn={}".format(msg.warn))
+
+    def external_estop_callback(self, msg):
+        self.external_emergency_stop = msg.data
+        if msg.data:
+            self.cancel_current_motion("Externe E-stop via HMI (geen logging)")
+
+    def cancel_current_motion(self, reason=""):
+        if self.client.gh and self.client.gh.comm_state != actionlib.CommState.DONE:
+            rospy.logwarn("Beweging afgebroken: {}".format(reason))
+            self.client.cancel_goal()
+
+    def is_emergency_stop_active(self):
+        return self.emergency_stop_active or self.external_emergency_stop
+
     def publish_tf(self, pose, frame_id="world", child_frame_id="product_locatie"):
-        # Publiceer een TF transform om het product visueel te maken in RViz
         t = TransformStamped()
         t.header.stamp = rospy.Time.now()
         t.header.frame_id = frame_id
@@ -52,57 +92,56 @@ class RobotHandler:
         self.tf_broadcaster.sendTransform(t)
 
     def publish_tf_timer(self, event):
-        # Wordt periodiek aangeroepen door rospy.Timer om TF te blijven publiceren
         if self.latest_pose:
             self.publish_tf(self.latest_pose)
 
     def set_gripper(self, on, wait_time=2):
-        # Activeer of deactiveer de gripper (vacuum aan of uit)
         try:
             state = 0 if on else 1
-            rospy.loginfo("Gripper %s", "aan (vacuum)" if on else "uit (loslaten)")
+            rospy.loginfo("Gripper {}".format("aan (vacuum)" if on else "uit (loslaten)"))
             resp = self.gripper_service(state)
             rospy.sleep(wait_time)
-            rospy.loginfo("Gripper service-oproep verstuurd, response: ret=%s", resp.ret)
+            rospy.loginfo("Gripper service-oproep verstuurd, response: ret={}".format(resp.ret))
             return resp.ret == 0
         except rospy.ServiceException as e:
-            rospy.logerr("Fout bij aanroepen gripper service: %s", str(e))
+            rospy.logerr("Fout bij aanroepen gripper service: {}".format(str(e)))
             return False
 
     def move_to(self, pose, max_retries=10):
-        # Stuur een pose naar de robot en probeer deze maximaal max_retries keer
+        if self.is_emergency_stop_active():
+            rospy.logerr("Beweging geblokkeerd: noodstop is actief!")
+            return False
+
         goal = MoveToPoseGoal()
         goal.target_pose = pose
 
-        def feedback_cb(feedback):
-            rospy.loginfo("Voortgang: %.1f%%", feedback.progress)
+        def feedback_callback(feedback):
+            rospy.loginfo("Status vanuit controller: {}".format(feedback.status))
 
         attempt = 0
         while attempt < max_retries:
-            rospy.loginfo("Beweging poging %d naar: x=%.3f, y=%.3f, z=%.3f",
-                          attempt + 1, pose.position.x, pose.position.y, pose.position.z)
+            rospy.loginfo("Beweging poging {} naar: x={:.3f}, y={:.3f}, z={:.3f}".format(
+                attempt + 1, pose.position.x, pose.position.y, pose.position.z))
 
-            self.client.send_goal(goal, feedback_cb=feedback_cb)
+            self.client.send_goal(goal, feedback_cb=feedback_callback)
             self.client.wait_for_result()
             result = self.client.get_result()
 
             if result and result.success:
-                rospy.loginfo("Resultaat succesvol op poging %d", attempt + 1)
+                rospy.loginfo("Resultaat succesvol op poging {}".format(attempt + 1))
                 return True
             else:
-                rospy.logwarn("Beweging mislukt op poging %d", attempt + 1)
+                rospy.logwarn("Beweging mislukt op poging {}".format(attempt + 1))
                 attempt += 1
                 rospy.sleep(1.0)
 
-        rospy.logerr("Beweging naar pose mislukt na %d pogingen", max_retries)
+        rospy.logerr("Beweging naar pose mislukt na {} pogingen".format(max_retries))
         return False
 
     def sort(self, x, y, z , orientation, object_type):
-        # Volledige pick-and-place sequentie uitvoeren op basis van object type
-        rospy.loginfo("Pick-and-place gestart voor '%s' op (%.3f, %.3f, %.3f)",
-                      object_type, x, y, z)
+        rospy.loginfo("Pick-and-place gestart voor '{}' op ({:.3f}, {:.3f}, {:.3f})".format(
+            object_type, x, y, z))
 
-        # Definieer de pickup poses
         pickup_pose = Pose()
         pickup_pose.position.x = x
         pickup_pose.position.y = y
@@ -115,24 +154,18 @@ class RobotHandler:
         pickup_down.position.z = z + 0.082
         pickup_down.orientation = orientation
 
-        # Publiceer TF-frame tijdens benadering
         rospy.loginfo("TF Frame 'product_locatie' publiceren")
         self.latest_pose = pickup_down
         if not self.move_to(self.standby_pose): return False
-
-        # Uitvoeren van pick and place stappen
         if not self.move_to(pickup_pose): return False
         if not self.set_gripper(False): return False
         if not self.move_to(pickup_down): return False
 
-        # Stop TF-publicatie zodra we op pickup_down zijn
         self.latest_pose = None
-
         if not self.set_gripper(True): return False
         if not self.move_to(pickup_pose): return False
         if not self.move_to(self.standby_pose): return False
 
-        # Doelpositie bepalen
         target_pose = Pose()
         if object_type == "hout":
             target_pose.position.x = 0.076
@@ -151,10 +184,9 @@ class RobotHandler:
             target_pose.position.y = 0.305
             target_pose.position.z = 0.265
         else:
-            rospy.logwarn("Onbekend object_type: %s", object_type)
+            rospy.logwarn("Onbekend object_type: {}".format(object_type))
             return False
 
-        # Zet oriëntatie voor plaatsing
         qx, qy, qz, qw = quaternion_from_euler(3.14, 0, -1.57)
         target_pose.orientation.x = qx
         target_pose.orientation.y = qy
@@ -166,14 +198,13 @@ class RobotHandler:
         if not self.move_to(self.standby_pose): return False
         if not self.set_gripper(True): return False
 
-        # Stopservice voor de gripper aanroepen
         try:
             rospy.wait_for_service('/ufactory/stop_lite6_gripper', timeout=5.0)
             stop_service = rospy.ServiceProxy('/ufactory/stop_lite6_gripper', Call)
             resp = stop_service()
-            rospy.loginfo("Stopservice gripper aangeroepen, response: ret=%s", resp.ret)
+            rospy.loginfo("Stopservice gripper aangeroepen, response: ret={}".format(resp.ret))
         except rospy.ServiceException as e:
-            rospy.logerr("Fout bij stopservice gripper: %s", str(e))
+            rospy.logerr("Fout bij stopservice gripper: {}".format(str(e)))
         except rospy.ROSException:
             rospy.logerr("Timeout bij wachten op stopservice gripper")
 
@@ -181,7 +212,6 @@ class RobotHandler:
         return True
 
     def reset_robot(self):
-        # Reset de robot na een noodstop en keer terug naar standby
         try:
             rospy.loginfo("Noodstop resetten...")
             reset_resp = self.set_state_service(4)
@@ -200,9 +230,9 @@ class RobotHandler:
                     rospy.logwarn("Beweging naar standby faalde.")
                     return False
             else:
-                rospy.logwarn("Robot reset faalde: reset=%s, servo=%s", reset_resp.ret, servo_resp.ret)
+                rospy.logwarn("Robot reset faalde: reset={}, servo={}".format(reset_resp.ret, servo_resp.ret))
                 return False
         except rospy.ServiceException as e:
-            rospy.logerr("Fout bij resetten van de robot: %s", str(e))
+            rospy.logerr("Fout bij resetten van de robot: {}".format(str(e)))
             return False
 
