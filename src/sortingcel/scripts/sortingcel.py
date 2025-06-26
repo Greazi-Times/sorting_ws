@@ -9,6 +9,9 @@ from hmi.msg import ControlCommand
 from hmi_listener import HMICommandListener
 from transport_handler import Transportsystem
 from camera_handler import CameraHandler
+from robot_handler import RobotHandler
+from xarm_msgs.msg import RobotMsg
+from transfer_util import TransformUtil
 
 import std_msgs
 from std_msgs.msg import Bool
@@ -30,6 +33,7 @@ class sorting_system:
         self.transport_handler = transport_handler
         self.camera_handler = camera_handler
         self.robot_handler = robot_handler
+        self.transfer_util = TransformUtil()
 
         self.cycle_mode = False  # Default to single mode
 
@@ -91,6 +95,16 @@ class sorting_system:
             return
 
         # Robot perform method
+        result = self.transfer_util.transform(info.X, info.Y, info.Z, qx, qy, qz, qw)
+
+        if not result:
+            rospy.logerr("Kon transformatie niet uitvoeren.")
+            exit(1)
+
+        x_w, y_w, z_w, orientation = result
+
+        handler.sort(x_w, y_w, z_w, orientation, object_type)
+        
 
         if (self.cycle_mode and not self.stopping):
             rospy.loginfo("Continues mode activated starting loop again.")
@@ -98,8 +112,7 @@ class sorting_system:
             self.start_system()
         else:
             rospy.loginfo("Stopping system.")
-            self.hmi_handler.stop_system()
-            self.update_state("STOPPED")
+            self.reset_system()
 
     def stop_system(self):
         """
@@ -183,8 +196,9 @@ if __name__ == '__main__':
 
     hmi_handler = HMICommandListener(rospy, ros_handler)
     camera_handler = CameraHandler()
+    robot_handler = RobotHandler()
 
-    sorting = sorting_system(rospy, ros_handler, hmi_handler, transport_handler, camera_handler)
+    sorting = sorting_system(rospy, ros_handler, hmi_handler, transport_handler, camera_handler, robot_handler)
 
     subscribers = subscribers(rospy, hmi_handler, sorting)
 
@@ -192,6 +206,8 @@ if __name__ == '__main__':
     ros_handler.create_subscriber('hmi/user_command', ControlCommand, subscribers.hmi_command_callback)
     ros_handler.create_subscriber('transportsystem/sensor/start', Bool, transport_handler._beginsensor_callback)
     ros_handler.create_subscriber('transportsystem/sensor/end', Bool, transport_handler._eindsensor_callback)
+    ros_handler.create_subscriber("/ufactory/robot_states", RobotMsg, robot_handler._robot_state_callback)
+    ros_handler.create_subscriber("/custom/emergency_stop", Bool, robot_handler.external_estop_callback)
 
     # Create publishers
     ros_handler.create_publisher('hmi/system_command', ControlCommand)

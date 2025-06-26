@@ -2,6 +2,8 @@
   <!-- A: Start the HMI -->
   <include file="$(find hmi)/launch/hmi_launcher.launch"/>
 
+  <include file="$(find my_depthai)/launch/detectie.launch"/>
+
   <!-- B: Start Arduino via rosserial -->
   <node name="arduino_node" pkg="rosserial_python" type="serial_node.py" output="screen">
     <param name="port" value="/dev/ttyACM0"/>
