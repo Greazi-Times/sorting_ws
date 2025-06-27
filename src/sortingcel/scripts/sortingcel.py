@@ -1,6 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
-#Import libraries
+# Import libraries
 import rospy
 import ROSHandler
 
@@ -36,27 +37,26 @@ class sorting_system:
         self.transfer_util = TransformUtil()
 
         self.cycle_mode = False  # Default to single mode
-
         self.stopping = False  # Flag to indicate if the system is stopping
 
         rospy.loginfo("Sorting system initialized.")
-        
 
     def update_state(self, new_state):
         """
         Update the current state of the sorting system.
         """
         global state
-        rospy.loginfo(f"Updating state from {state} to {new_state}")
+        rospy.loginfo("Updating state from {} to {}".format(state, new_state))
         state = new_state
-        ros_handler.publish('hmi/system_command', ControlCommand(command=new_state))
-    
+        self.ros_handler.publish('hmi/system_command', ControlCommand(command=new_state))
+
     def reset_system(self):
         """
         Reset the sorting system to its initial state.
         """
         rospy.loginfo("Resetting sorting system...")
         self.update_state("RESET")
+        self.robot_handler.reset_robot()
         rospy.loginfo("Sorting system reset complete.")
         self.hmi_handler.reset_indication()
 
@@ -64,17 +64,15 @@ class sorting_system:
         """
         Start the sorting system.
         """
-
         if self.cycle_mode:
-            hmi_handler.in_progress()
+            self.hmi_handler.in_progress()
             self.update_state("IN-PROGRESS")
         else:
-            hmi_handler.in_progress()
+            self.hmi_handler.in_progress()
             self.update_state("STOPPING")
             self.stopping = True
             rospy.sleep(0.5)
-            hmi_handler.stop_system()
-        
+            self.hmi_handler.stop_system()
 
         if self.transport_handler.perform():
             rospy.loginfo("Transport system has successfully finished its task.")
@@ -83,11 +81,12 @@ class sorting_system:
             self.hmi_handler.error()
             self.update_state("ERROR")
             return
-        
+
         # Check camera detection
         info = self.camera_handler.check()
         if info:
-            print(f"Detected object: {info.object_class} at ({info.X}, {info.Y}, {info.Z}) with angle {info.angle}")
+            print("Detected object: {} at ({}, {}, {}) with angle {}".format(
+                info.object_class, info.X, info.Y, info.Z, info.angle))
         else:
             rospy.logerr("No detection info received from camera.")
             self.hmi_handler.error()
@@ -95,20 +94,24 @@ class sorting_system:
             return
 
         # Robot perform method
-        result = self.transfer_util.transform(info.X, info.Y, info.Z, qx, qy, qz, qw)
+        result = self.transfer_util.transform(info.X, info.Y, info.Z, info.qx, info.qy, info.qz, info.qw)
 
         if not result:
-            rospy.logerr("Kon transformatie niet uitvoeren.")
-            exit(1)
+            rospy.logerr("Could not perform transform.")
+            self.hmi_handler.error()
+            self.update_state("ERROR")
+            return
 
         x_w, y_w, z_w, orientation = result
 
-        handler.sort(x_w, y_w, z_w, orientation, object_type)
-        
+        if not self.robot_handler.sort(x_w, y_w, z_w, orientation, info.object_class):
+            rospy.loggerr("Could not move the robot, 10/10 failed!")
+            self.hmi_handler.error()
+            self.update_state("ERROR")
+            return
 
-        if (self.cycle_mode and not self.stopping):
+        if self.cycle_mode and not self.stopping:
             rospy.loginfo("Continues mode activated starting loop again.")
-            # Start this method again to continue the cycle
             self.start_system()
         else:
             rospy.loginfo("Stopping system.")
@@ -122,7 +125,6 @@ class sorting_system:
         self.hmi_handler.stop_system()
         self.update_state("STOPPING")
 
-        
     def emergency_stop(self):
         """
         Emergency stop action for the sorting system.
@@ -130,17 +132,16 @@ class sorting_system:
         rospy.logerr("Emergency stop activated!")
         self.hmi_handler.emergency_stop()
         self.update_state("EMERGENCY_STOP")
-
-        # Add all logics to stop the systems
         self.transport_handler.noodstop()
-        
+
     def cycle(self, on):
         """ 
         Toggle the cycle mode of the sorting system.
         """
         self.cycle_mode = on
         self.update_state("CONSTANT" if on else "SINGLE")
-        rospy.loginfo(f"Cycle mode set to {'CONSTANT' if on else 'SINGLE'}.")
+        rospy.loginfo("Cycle mode set to {}.".format("CONSTANT" if on else "SINGLE"))
+
 
 class subscribers:
     """
@@ -159,11 +160,9 @@ class subscribers:
         """
         Callback function for HMI command messages.
         """
-        global state, continues
-        rospy.loginfo(f"[HMI Command] Received command: {msg.command}")
-        # Process the command here
-        # Example: self.ros_handler.process_command(msg)
-        
+        global state
+        rospy.loginfo("[HMI Command] Received command: {}".format(msg.command))
+
         command_msg = msg.command
         if command_msg == "START":
             self.sorting_system.start_system()
@@ -178,8 +177,9 @@ class subscribers:
         elif command_msg == "SINGLE":
             self.sorting_system.cycle(False)
         else:
-            rospy.logwarn(f"[HMI Listener] Unknown command: {msg.command}")
+            rospy.logwarn("[HMI Listener] Unknown command: {}".format(msg.command))
             state = "ERROR"
+
 
 # Main initialization function
 if __name__ == '__main__':
@@ -187,29 +187,25 @@ if __name__ == '__main__':
     rospy.init_node('sortingcel', anonymous=True)
     rospy.loginfo("Starting sortingcel system...")
 
-    # Initialize the handler
     ros_handler = ROSHandler.ROSHandler(rospy)
     rospy.loginfo("ROSHandler initialized.")
 
-    # Create instance of hanlders
     transport_handler = Transportsystem(rospy, ros_handler)
-
     hmi_handler = HMICommandListener(rospy, ros_handler)
     camera_handler = CameraHandler()
     robot_handler = RobotHandler()
 
     sorting = sorting_system(rospy, ros_handler, hmi_handler, transport_handler, camera_handler, robot_handler)
+    subscribers_node = subscribers(rospy, hmi_handler, sorting)
 
-    subscribers = subscribers(rospy, hmi_handler, sorting)
-
-    # Subscribe using the listener's method
-    ros_handler.create_subscriber('hmi/user_command', ControlCommand, subscribers.hmi_command_callback)
+    # Subscribe
+    ros_handler.create_subscriber('hmi/user_command', ControlCommand, subscribers_node.hmi_command_callback)
     ros_handler.create_subscriber('transportsystem/sensor/start', Bool, transport_handler._beginsensor_callback)
     ros_handler.create_subscriber('transportsystem/sensor/end', Bool, transport_handler._eindsensor_callback)
     ros_handler.create_subscriber("/ufactory/robot_states", RobotMsg, robot_handler._robot_state_callback)
     ros_handler.create_subscriber("/custom/emergency_stop", Bool, robot_handler.external_estop_callback)
 
-    # Create publishers
+    # Publishers
     ros_handler.create_publisher('hmi/system_command', ControlCommand)
     ros_handler.create_publisher('light_indication/constant/on', std_msgs.msg.String)
     ros_handler.create_publisher('light_indication/blink/on', std_msgs.msg.String)

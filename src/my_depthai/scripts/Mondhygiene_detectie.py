@@ -29,19 +29,31 @@ import json
 class detection_displayer:
 
     def handle_get_info(self, req):
+        if self.latest_pose_msg is None:
+            rospy.logwarn("Nog geen pose beschikbaar.")
+            empty_pose = PoseStamped()
+            empty_pose.header.stamp = rospy.Time.now()
+            empty_pose.header.frame_id = "camera_link"
+            return cameraResponse(
+                pose=empty_pose,
+                object_class="",
+                confidence=0
+            )
+
         return cameraResponse(
-            X=self.latest_info["X"],
-            Y=self.latest_info["Y"],
-            Z= self.latest_info["Z"],
-            angle=self.latest_info["angle"],
-            object_class=self.latest_info["object_class"],
-            confidence=self.latest_info["confidence"] 
+            pose=self.latest_pose_msg,
+            object_class=self.latest_object_class,
+            confidence=self.latest_confidence
         )
+    
     def __init__(self, config_file):
         rospy.loginfo(config_file)
         self.display_image = False
 
-        self.latest_info = {"X": 0.0, "Y": 0.0, "Z" : 538.2, "angle": 0.0, "object_class": "", "confidence": 0}
+        self.latest_pose_msg = None
+        self.latest_object_class = ""
+        self.latest_confidence = 0
+
         rospy.Service('/get_detection_info', camera, self.handle_get_info)
 
         self.colors = []
@@ -92,11 +104,26 @@ class detection_displayer:
 
                 X = (center_x - cx) * z / fx
                 Y = ((center_y - cy) * z / fy) - 0.015
-                Z = 538.2
+                Z = 0.5382
 
                 class_index = detection.results[0].id
-                confidence = detection.results[0].score
-                confidence_pct = int(confidence * 100)
+
+                max_tries = 4
+                threshold = 70
+                confidence_pct = 0
+
+                for attempt in range(1, max_tries + 1):
+                    confidence = detection.results[0].score
+                    confidence_pct = int(confidence * 100)
+                    if confidence_pct >= threshold:
+                        break
+
+                if confidence_pct < threshold:
+                    self.latest_object_class = ' '
+                else:
+                    self.latest_object_class = self.class_names[class_index]
+
+                self.latest_confidence = confidence_pct
 
                 class_color = self.colors[int(class_index)].strip("#")
                 class_color = tuple(int(class_color[i:i + 2], 16) for i in (0, 2, 4))
@@ -182,26 +209,20 @@ class detection_displayer:
                         angle = 0
 
 
-                self.latest_info["X"] = X
-                self.latest_info["Y"] = Y
-                self.latest_info["Z"] = Z
-                self.latest_info["angle"] = angle
-                self.latest_info["object_class"] = self.class_names[detection.results[0].id]
-                self.latest_info["confidence"] = confidence_pct               
+                pose_msg = PoseStamped()
+                pose_msg.header.stamp = rospy.Time.now()
+                pose_msg.header.frame_id = "camera_link"
+                pose_msg.pose.position.x = X
+                pose_msg.pose.position.y = Y
+                pose_msg.pose.position.z = Z
+                quat = tf_trans.quaternion_from_euler(0, 0, np.deg2rad(angle))
+                pose_msg.pose.orientation = Quaternion(*quat)
 
-                #pose_msg = PoseStamped()
-                #pose_msg.header.stamp = rospy.Time.now()
-                #pose_msg.header.frame_id = "camera_link"  # Of base_link/map, afhankelijk van jouw tf
+                self.latest_pose_msg = pose_msg
+                self.latest_object_class = self.class_names[class_index]
+                self.latest_confidence = confidence_pct
 
-                #pose_msg.pose.position.x = X
-                #pose_msg.pose.position.y = Y
-                #pose_msg.pose.position.z = Z
-
-                # Hoek omzetten naar quaternion
-                #quat = tf_trans.quaternion_from_euler(0, 0, np.deg2rad(angle))
-                #pose_msg.pose.orientation = Quaternion(*quat)
-        
-                #self.pose_pub.publish(pose_msg)
+                self.pose_pub.publish(pose_msg)
 
 
             try:

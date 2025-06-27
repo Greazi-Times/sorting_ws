@@ -1,22 +1,19 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import rospy
 from std_msgs.msg import Bool, String
 
 class Transportsystem:
     def __init__(self, rospy, ros_handler):
-        # Publishers en subscribers
-        #self.transport_pub = rospy.Publisher('/transport_command', Bool, queue_size=10)
-        #self.begin_sub = rospy.Subscriber('/object_op_begin_transport', Bool, self._beginsensor_callback)
-        #self.eind_sub = rospy.Subscriber('/object_op_eind_transport', Bool, self._eindsensor_callback)
-
+        # Save references
         self.rospy = rospy
         self.ros_handler = ros_handler
 
-        # Interne status
+        # Internal state
         self.transport_actief = False
         self.object_klaar = False
-        self.object_aangekomen = False
+        self.eindsensor_bezet = False
 
     def _beginsensor_callback(self, msg):
         self.object_klaar = msg.data
@@ -38,6 +35,8 @@ class Transportsystem:
             # Status feedback
             status_msg = String()
             status_msg.data = "gestopt via noodstop" if via_noodstop else "gestopt normaal"
+            # Optionally publish status_msg somewhere if needed
+            # self.ros_handler.publish('transportsystem/status', status_msg)
 
     def perform(self):
         rate = rospy.Rate(2)
@@ -45,8 +44,7 @@ class Transportsystem:
         if self.eindsensor_bezet:
             rospy.logerr("Eindsensor is al bezet bij start. Kan niet beginnen.")
             return False
-        
-        # Check voor x aantal seconden of beginsensor actief is
+
         start_time = rospy.get_time()
         timeout = 5  # seconds
 
@@ -58,10 +56,10 @@ class Transportsystem:
                 return False
             rate.sleep()
 
-        self.rospy.loginfo("Object gedetecteerd transportband start.")
+        self.rospy.loginfo("Object gedetecteerd, transportband start.")
         self.start_transport()
 
-        while not self.rospy.is_shutdown():
+        while not rospy.is_shutdown():
             if self.eindsensor_bezet:
                 break
             rate.sleep()

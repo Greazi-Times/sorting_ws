@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import rospy
 import actionlib
@@ -7,7 +8,7 @@ from std_msgs.msg import Bool
 from geometry_msgs.msg import Pose, TransformStamped
 from tf.transformations import quaternion_from_euler
 from my_demo.msg import MoveToPoseAction, MoveToPoseGoal
-from xarm_msgs.srv import SetInt16, Call, SetInt16Request
+from xarm_msgs.srv import SetInt16, Call
 from xarm_msgs.msg import RobotMsg
 
 class RobotHandler:
@@ -72,6 +73,7 @@ class RobotHandler:
             self.cancel_current_motion("Externe E-stop via HMI (geen logging)")
 
     def cancel_current_motion(self, reason=""):
+        # NOTE: Direct use of client.gh is technically internal; consider client.get_state() alternatives
         if self.client.gh and self.client.gh.comm_state != actionlib.CommState.DONE:
             rospy.logwarn("Beweging afgebroken: {}".format(reason))
             self.client.cancel_goal()
@@ -234,4 +236,3 @@ class RobotHandler:
         except rospy.ServiceException as e:
             rospy.logerr("Fout bij resetten van de robot: {}".format(str(e)))
             return False
-

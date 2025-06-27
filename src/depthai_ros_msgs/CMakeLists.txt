@@ -1,15 +1,17 @@
-cmake_minimum_required (VERSION 3.10.2)  # CMake version in Ubuntu 18.04 LTS
+cmake_minimum_required(VERSION 3.10.2)
 
-project (depthai_ros_msgs VERSION 2.6.4)
+project(depthai_ros_msgs VERSION 2.6.4)
 
 if(POLICY CMP0057)
-    cmake_policy(SET CMP0057 NEW)
+  cmake_policy(SET CMP0057 NEW)
 endif()
 
-set(catkin_FOUND 1)
-add_definitions( -DUSING_ROS )
+# Already handled by find_package(catkin ...)
+# set(catkin_FOUND 1)  <-- This is non-standard and unnecessary
 
-find_package (catkin REQUIRED COMPONENTS
+add_definitions(-DUSING_ROS)
+
+find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   message_generation
   rospy
@@ -18,39 +20,46 @@ find_package (catkin REQUIRED COMPONENTS
   vision_msgs
 )
 
-################################################
-## Declare ROS messages, services and actions ##
-################################################
-## Generate messages in the 'msg' folder
-add_message_files (
+######################################
+## Declare ROS messages and services #
+######################################
+
+# Generate messages
+add_message_files(
   FILES
   AutoFocusCtrl.msg
   HandLandmark.msg
   HandLandmarkArray.msg
-  # ImageMarker.msg
-  # ImageMarkerArray.msg
   SpatialDetection.msg
   SpatialDetectionArray.msg
 )
 
-## Generate services in the 'srv' folder
-add_service_files (
+# Generate services
+add_service_files(
   FILES
   TriggerNamed.srv
   NormalizedImageCrop.srv
   camera.srv
 )
 
-## Generate added messages and services with any dependencies listed here
-generate_messages (
+# Generate both messages and services
+generate_messages(
   DEPENDENCIES
-  geometry_msgs sensor_msgs std_msgs vision_msgs
+  geometry_msgs
+  sensor_msgs
+  std_msgs
+  vision_msgs
 )
 
-###################################
-## catkin specific configuration ##
-###################################
-catkin_package (
-  CATKIN_DEPENDS geometry_msgs message_runtime sensor_msgs std_msgs vision_msgs
-)
+#############################
+## Catkin package settings ##
+#############################
 
+catkin_package(
+  CATKIN_DEPENDS
+    geometry_msgs
+    message_runtime
+    sensor_msgs
+    std_msgs
+    vision_msgs
+)

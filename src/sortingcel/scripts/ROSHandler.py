@@ -1,4 +1,6 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 from threading import Lock
 
 # RosHandler class to manage publishers and subscribers
@@ -17,7 +19,7 @@ class ROSHandler:
         if topic_name not in self.publishers:
             pub = self.rospy.Publisher(topic_name, msg_type, queue_size=queue_size)
             self.publishers[topic_name] = pub
-            self.rospy.loginfo(f"Publisher created: {topic_name}")
+            self.rospy.loginfo("Publisher created: {}".format(topic_name))
         return self.publishers[topic_name]
 
     def create_subscriber(self, topic_name, msg_type, callback, queue_size=10):
@@ -31,7 +33,7 @@ class ROSHandler:
             self.subscribers[topic_name] = sub
             self.callbacks[topic_name] = wrapped_callback
             self.locks[topic_name] = lock
-            self.rospy.loginfo(f"Subscriber created: {topic_name}")
+            self.rospy.loginfo("Subscriber created: {}".format(topic_name))
         return self.subscribers[topic_name]
 
     def _wrap_callback(self, callback, lock):
@@ -50,7 +52,7 @@ class ROSHandler:
         if topic_name in self.publishers:
             self.publishers[topic_name].publish(msg)
         else:
-            self.rospy.logwarn(f"Tried to publish to unknown topic: {topic_name}")
+            self.rospy.logwarn("Tried to publish to unknown topic: {}".format(topic_name))
 
     def shutdown(self):
         """
@@ -61,4 +63,3 @@ class ROSHandler:
             pub.unregister()
         for topic, sub in self.subscribers.items():
             sub.unregister()
-
