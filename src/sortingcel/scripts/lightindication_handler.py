@@ -5,7 +5,7 @@ import rospy
 from hmi.msg import ControlCommand
 import std_msgs
 
-class HMICommandListener:
+class LightIndicationHandler:
     def __init__(self, rospy, ros_handler):
         self.rospy = rospy
         self.rosHandler = ros_handler

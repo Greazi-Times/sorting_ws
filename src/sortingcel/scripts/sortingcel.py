@@ -7,7 +7,7 @@ import ROSHandler
 
 # Messages
 from hmi.msg import ControlCommand
-from hmi_listener import HMICommandListener
+from lightindication_handler import LightIndicationHandler
 from transport_handler import Transportsystem
 from camera_handler import CameraHandler
 from robot_handler import RobotHandler
@@ -191,7 +191,7 @@ if __name__ == '__main__':
     rospy.loginfo("ROSHandler initialized.")
 
     transport_handler = Transportsystem(rospy, ros_handler)
-    hmi_handler = HMICommandListener(rospy, ros_handler)
+    hmi_handler = LightIndicationHandler(rospy, ros_handler)
     camera_handler = CameraHandler()
     robot_handler = RobotHandler()
 
