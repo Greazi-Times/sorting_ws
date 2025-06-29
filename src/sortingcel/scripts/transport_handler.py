@@ -2,21 +2,32 @@
 # -*- coding: utf-8 -*-
 
 import rospy
+import threading
 from std_msgs.msg import Bool, String
 
 class Transportsystem:
     def __init__(self, rospy, ros_handler):
-        # Save references
         self.rospy = rospy
         self.ros_handler = ros_handler
 
-        # Internal state
         self.transport_actief = False
-        self.object_klaar = False
+        self.beginsensor_bezet = False
         self.eindsensor_bezet = False
 
+        self.motor_status = ""
+        self.noodstop_event = threading.Event()  # << Thread-safe noodstop
+
+        rospy.Subscriber("transportband/motor", String, self.motor_status_callback)
+
+    def motor_status_callback(self, msg):
+        self.motor_status = msg.data
+        if msg.data == "motor gestopt":
+            self.rospy.logwarn("Transportband gestopt.")
+        elif msg.data == "motor gestart":
+            self.rospy.loginfo("Transportband gestart.")
+
     def _beginsensor_callback(self, msg):
-        self.object_klaar = msg.data
+        self.beginsensor_bezet = msg.data
 
     def _eindsensor_callback(self, msg):
         self.eindsensor_bezet = msg.data
@@ -32,10 +43,8 @@ class Transportsystem:
             self.ros_handler.publish('transportsystem/command', Bool(data=False))
             self.rospy.loginfo("Transportband gestopt.")
 
-            # Status feedback
             status_msg = String()
             status_msg.data = "gestopt via noodstop" if via_noodstop else "gestopt normaal"
-            # Optionally publish status_msg somewhere if needed
             # self.ros_handler.publish('transportsystem/status', status_msg)
 
     def perform(self):
@@ -45,23 +54,44 @@ class Transportsystem:
             rospy.logerr("Eindsensor is al bezet bij start. Kan niet beginnen.")
             return False
 
+        if self.noodstop_event.is_set():
+            rospy.logwarn("Noodstop is actief — transport wordt niet gestart.")
+            return False
+
         start_time = rospy.get_time()
-        timeout = 5  # seconds
+        timeout_start = 5
 
         while not rospy.is_shutdown():
-            if self.object_klaar:
+            if self.noodstop_event.is_set():
+                self.stop_transport(via_noodstop=True)
+                while self.motor_status != "motor gestopt" and not rospy.is_shutdown():
+                    rate.sleep()
+                rospy.logwarn("Noodstop ingedrukt, transport gestopt.")
+                return False
+            if self.beginsensor_bezet:
                 break
-            if rospy.get_time() - start_time > timeout:
+            if rospy.get_time() - start_time > timeout_start:
                 rospy.logwarn("Geen object gedetecteerd bij beginsensor na 5 seconden.")
                 return False
             rate.sleep()
 
-        self.rospy.loginfo("Object gedetecteerd, transportband start.")
         self.start_transport()
 
+        stop_time = rospy.get_time()
+        timeout_stop = 8
+
         while not rospy.is_shutdown():
+            if self.noodstop_event.is_set():
+                self.stop_transport(via_noodstop=True)
+                while self.motor_status != "motor gestopt" and not rospy.is_shutdown():
+                    rate.sleep()
+                rospy.logwarn("Noodstop ingedrukt, transport gestopt.")
+                return False
             if self.eindsensor_bezet:
                 break
+            if rospy.get_time() - stop_time > timeout_stop:
+                rospy.logwarn("Geen object gedetecteerd bij eindsensor na 8 seconden.")
+                return False
             rate.sleep()
 
         rospy.loginfo("Object aangekomen bij eindsensor. Transport stopt.")
@@ -74,14 +104,28 @@ class Transportsystem:
         rate = self.rospy.Rate(2)
 
         while not self.rospy.is_shutdown():
+            if self.noodstop_event.is_set():
+                self.stop_transport(via_noodstop=True)
+                while self.motor_status != "motor gestopt" and not rospy.is_shutdown():
+                    rate.sleep()
+                self.rospy.logwarn("Noodstop ingedrukt, transport gestopt.")
+                return False
             if not self.eindsensor_bezet:
                 rospy.loginfo("Eindsensor vrij. Foutobject afgevoerd.")
                 break
             rate.sleep()
 
-        self.stop_transport()
+        if not self.noodstop_event.is_set():
+            self.rospy.sleep(1)
+            self.stop_transport()
         return True
 
     def noodstop(self):
-        self.stop_transport(via_noodstop=True)
-        return True
+        self.noodstop_event.set()
+        if self.motor_status == "motor gestopt":
+            return True
+
+    def reset(self):
+        if self.motor_status == "motor gestopt":
+            self.noodstop_event.clear()
+            return True

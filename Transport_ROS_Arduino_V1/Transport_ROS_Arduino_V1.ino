@@ -28,7 +28,7 @@ const int GREEN_BLINK  = 13;
 
 // ------------ ROS Publishers ------------
 std_msgs::String status_msg;
-ros::Publisher status_pub("transport_status", &status_msg);
+ros::Publisher status_pub("transportband/motor", &status_msg);
 
 std_msgs::Bool object_msg;
 ros::Publisher object_pub("transportsystem/sensor/end", &object_msg);
@@ -65,12 +65,12 @@ void commandCallback(const std_msgs::Bool &msg) {
     digitalWrite(motorIn1, HIGH);
     digitalWrite(motorIn2, LOW);
     analogWrite(motorPWM, 255);
-    status_msg.data = "transport actief";
+    status_msg.data = "motor gestart";
   } else {
     digitalWrite(motorIn1, LOW);
     digitalWrite(motorIn2, LOW);
     analogWrite(motorPWM, 0);
-    status_msg.data = "transport stil";
+    status_msg.data = "motor gestopt";
   }
 
   status_pub.publish(&status_msg);
