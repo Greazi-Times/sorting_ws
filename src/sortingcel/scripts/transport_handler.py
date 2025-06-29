@@ -17,7 +17,7 @@ class Transportsystem:
         self.motor_status = ""
         self.noodstop_event = threading.Event()  # << Thread-safe noodstop
 
-        rospy.Subscriber("transportband/motor", String, self.motor_status_callback)
+        rospy.Subscriber("transportsystem/motor", String, self.motor_status_callback)
 
     def motor_status_callback(self, msg):
         self.motor_status = msg.data

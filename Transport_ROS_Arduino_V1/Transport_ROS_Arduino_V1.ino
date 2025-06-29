@@ -28,7 +28,7 @@ const int GREEN_BLINK  = 13;
 
 // ------------ ROS Publishers ------------
 std_msgs::String status_msg;
-ros::Publisher status_pub("transportband/motor", &status_msg);
+ros::Publisher status_pub("transportsystem/motor", &status_msg);
 
 std_msgs::Bool object_msg;
 ros::Publisher object_pub("transportsystem/sensor/end", &object_msg);
