@@ -105,8 +105,8 @@ class Transportsystem:
 
         while not self.rospy.is_shutdown():
             if self.noodstop_event.is_set():
-                self.stop_transport(via_noodstop=True)
                 while self.motor_status != "motor gestopt" and not rospy.is_shutdown():
+                    self.stop_transport(via_noodstop=True)
                     rate.sleep()
                 self.rospy.logwarn("Noodstop ingedrukt, transport gestopt.")
                 return False
@@ -128,6 +128,7 @@ class Transportsystem:
     def reset(self):
         if self.motor_status == "motor gestopt":
             self.noodstop_event.clear()
-            self.rospy.loginfo("Noodstop gereset.")
+            self.rospy.loginfo("Noodstop gereset in transportsysteem.")
+            return True
         else:
-            self.rospy.logwarn("Reset geblokkeerd: motor draait nog.")
+            self.rospy.logwarn("Reset geblokkeerd: motor draait nog op transport.")
