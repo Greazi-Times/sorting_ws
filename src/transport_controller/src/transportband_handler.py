@@ -85,6 +85,7 @@ class Transportsystem:
                 while self.motor_status != "motor gestopt" and not rospy.is_shutdown():
                     self.stop_transport(via_noodstop=True)
                     rate.sleep()
+                    return False
                 rospy.logwarn("Noodstop ingedrukt, transport gestopt.")
                 return False
             if self.eindsensor_bezet:
@@ -108,6 +109,7 @@ class Transportsystem:
                 while self.motor_status != "motor gestopt" and not rospy.is_shutdown():
                     self.stop_transport(via_noodstop=True)
                     rate.sleep()
+                    return False
                 self.rospy.logwarn("Noodstop ingedrukt, transport gestopt.")
                 return False
             if not self.eindsensor_bezet:
